@@ -77,6 +77,12 @@
       resize: vertical;
       box-sizing: border-box;
       margin-bottom: 10px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    textarea:focus, textarea:focus-visible {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(0, 86, 179, 0.25);
     }
     button {
       background-color: var(--primary-color);
@@ -86,18 +92,29 @@
       font-size: 1rem;
       border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: background-color 0.2s, opacity 0.2s, box-shadow 0.2s;
       align-self: flex-start;
       margin-bottom: 10px;
     }
-    button:hover {
+    button:hover:not(:disabled) {
       background-color: #004494;
+    }
+    button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary-color);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
     button.danger {
       background-color: var(--danger-color);
     }
-    button.danger:hover {
+    button.danger:hover:not(:disabled) {
       background-color: #c82333;
+    }
+    button.danger:focus-visible {
+      box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--danger-color);
     }
     .control-panel {
       width: 90%;
@@ -130,23 +147,23 @@
     <div>
       <strong>Entrées en dictionnaire :</strong> <span id="entry-count">0</span>
     </div>
-    <button class="danger" id="btn-reset">Vider le dictionnaire (Reset de session)</button>
+    <button class="danger" id="btn-reset" aria-label="Vider le dictionnaire de la session courante" disabled>Vider le dictionnaire (Reset de session)</button>
   </div>
 
   <div class="container">
     <div class="section">
       <h2>Préparation (Aller)</h2>
-      <div id="obfuscate-error" class="error-msg"></div>
-      <textarea id="input-java" placeholder="Collez le code Java original ici"></textarea>
-      <button id="btn-obfuscate">🔒 Offusquer</button>
-      <textarea id="output-obfuscated" readonly placeholder="Code offusqué à copier pour l'IA"></textarea>
+      <div id="obfuscate-error" class="error-msg" aria-live="polite"></div>
+      <textarea id="input-java" placeholder="Collez le code Java original ici" aria-label="Code Java original"></textarea>
+      <button id="btn-obfuscate" aria-label="Offusquer le code Java" disabled>🔒 Offusquer</button>
+      <textarea id="output-obfuscated" readonly placeholder="Code offusqué à copier pour l'IA" aria-label="Code offusqué généré"></textarea>
     </div>
 
     <div class="section">
       <h2>Restauration (Retour)</h2>
-      <textarea id="input-ai" placeholder="Collez la réponse de l'IA ici"></textarea>
-      <button id="btn-restore">🔓 Restaurer le code</button>
-      <textarea id="output-restored" readonly placeholder="Réponse restaurée"></textarea>
+      <textarea id="input-ai" placeholder="Collez la réponse de l'IA ici" aria-label="Réponse de l'IA contenant le code offusqué"></textarea>
+      <button id="btn-restore" aria-label="Restaurer le code original" disabled>🔓 Restaurer le code</button>
+      <textarea id="output-restored" readonly placeholder="Réponse restaurée" aria-label="Code restauré"></textarea>
     </div>
   </div>
 
