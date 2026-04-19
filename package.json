@@ -1,0 +1,18 @@
+{
+  "name": "java-vault",
+  "version": "1.0.0",
+  "description": "Application d'Offuscation de Code Java",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "java-parser": "^2.3.2"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "vite-plugin-singlefile": "^2.0.0"
+  }
+}
