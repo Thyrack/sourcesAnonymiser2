@@ -177,7 +177,11 @@ export function obfuscate(code, currentMapping = {}) {
   const counters = { VAR: 0, STR: 0, CLASS: 0, METHOD: 0 };
   const currentMappingKeys = Object.keys(currentMapping);
 
+  // ⚡ Bolt: Cache reversed mapping to replace O(n²) nested loop with O(n) lookup
+  const reverseMapping = {};
+
   for (const key of currentMappingKeys) {
+      reverseMapping[currentMapping[key]] = key;
       for (const prefix of ['VAR', 'STR', 'CLASS', 'METHOD']) {
           const match = key.match(new RegExp(`^${prefix}_(\\d+)$`));
           if (match) {
@@ -199,7 +203,8 @@ export function obfuscate(code, currentMapping = {}) {
       }
 
       let id;
-      const existingKeyGlobal = Object.keys(currentMapping).find(k => currentMapping[k] === n.value);
+      // ⚡ Bolt: O(1) hash map lookup instead of O(M) .find()
+      const existingKeyGlobal = reverseMapping[n.value];
 
       if (existingKeyGlobal) {
           id = existingKeyGlobal;
