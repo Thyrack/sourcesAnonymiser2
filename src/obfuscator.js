@@ -177,13 +177,19 @@ export function obfuscate(code, currentMapping = {}) {
   const counters = { VAR: 0, STR: 0, CLASS: 0, METHOD: 0 };
   const currentMappingKeys = Object.keys(currentMapping);
 
+  // Performance optimization: Avoid creating RegExp objects in a double loop
   for (const key of currentMappingKeys) {
-      for (const prefix of ['VAR', 'STR', 'CLASS', 'METHOD']) {
-          const match = key.match(new RegExp(`^${prefix}_(\\d+)$`));
-          if (match) {
-              const count = parseInt(match[1], 10);
-              if (count > counters[prefix]) {
-                  counters[prefix] = count;
+      const underIndex = key.indexOf('_');
+      if (underIndex > 0) {
+          const prefix = key.substring(0, underIndex);
+          if (counters[prefix] !== undefined) {
+              const countStr = key.substring(underIndex + 1);
+              // Basic check if it's a number to avoid matching invalid keys (though rare)
+              if (/^\d+$/.test(countStr)) {
+                  const count = parseInt(countStr, 10);
+                  if (count > counters[prefix]) {
+                      counters[prefix] = count;
+                  }
               }
           }
       }
@@ -246,15 +252,15 @@ export function obfuscate(code, currentMapping = {}) {
 export function deobfuscate(text, mapping) {
     if (!text || !mapping) return text;
 
+    const keys = Object.keys(mapping);
+    if (keys.length === 0) return text;
+
     // Trier les clés par longueur décroissante
-    const keys = Object.keys(mapping).sort((a, b) => b.length - a.length);
+    // Performance optimization: Single O(L) pass replacement instead of O(N*L)
+    // Avoids cascading replacements and reduces garbage collection
+    keys.sort((a, b) => b.length - a.length);
+    const escapedKeys = keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const pattern = new RegExp(escapedKeys.join('|'), 'g');
 
-    let restoredText = text;
-    for (const key of keys) {
-        // Remplacer toutes les occurrences de la clé par sa valeur
-        const value = mapping[key];
-        restoredText = restoredText.replaceAll(key, value);
-    }
-
-    return restoredText;
+    return text.replace(pattern, matched => mapping[matched]);
 }

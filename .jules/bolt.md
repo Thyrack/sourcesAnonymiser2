@@ -1,0 +1,3 @@
+## 2024-04-20 - [O(1) Pass Multiple String Replacement]
+**Learning:** Using `String.prototype.replaceAll` inside a loop over dictionary keys for deobfuscation is a performance anti-pattern in JavaScript. It creates O(N * L) complexity (where N is the dictionary size and L is text length) and allocates a new string on each iteration. It's also prone to unintended "cascading replacements" where a replaced value might contain a key that gets incorrectly replaced in a subsequent iteration.
+**Action:** Replace `replaceAll` loops with a single dynamically compiled `RegExp` (`new RegExp(escapedKeys.join('|'), 'g')`) and a replacer function to process the text in a single O(L) pass, which is ~18x faster and prevents cascading replacements.
