@@ -1,60 +1,76 @@
 # Java Vault - Application d'Offuscation de Code Java
 
 ## 1. Contexte et Objectif
-**Java Vault** est une application web côté client (Single Page Application) conçue pour sécuriser le partage de code source Java avec des Intelligences Artificielles (LLM). Elle permet d'offusquer le code sensible avant de le soumettre à une IA, puis de réaliser l'opération inverse (désoffuscation) sur le code généré en retour.
+**Java Vault** est une application conçue pour sécuriser le partage de code source Java avec des Intelligences Artificielles (LLM). Elle permet d'offusquer le code sensible avant de le soumettre à une IA, puis de réaliser l'opération inverse (désoffuscation) sur le code généré en retour.
 
-L'application est entièrement portable, fonctionnant dans un **fichier HTML unique** sans dépendance à un serveur, et peut être utilisée hors-ligne.
+L'application est disponible en deux formats :
+- **Web (SPA) :** Un fichier HTML unique portable et autonome.
+- **Desktop (Tauri) :** Une application de bureau pour Windows, macOS et Linux.
 
 ## 2. Fonctionnalités Principales
 
 ### 🔒 Offuscation (Moteur AST)
-L'offuscation n'utilise pas de simples expressions régulières, mais s'appuie sur une analyse syntaxique réelle via `java-parser` (AST - Abstract Syntax Tree).
+L'offuscation s'appuie sur une analyse syntaxique réelle via `java-parser` (AST - Abstract Syntax Tree).
 - **Remplacement intelligent :** Les chaînes de caractères (`STR_X`) et les noms de variables (`VAR_X`) sont systématiquement remplacés.
-- **Mode Haute Sécurité :** Activé automatiquement si le package Java commence par `pf.gov`. Dans ce mode, les noms de classes (`CLASS_X`) et de méthodes (`METHOD_X`) sont également offusqués.
-- **Suppression des commentaires :** Tous les commentaires (ligne et bloc) sont supprimés pour éviter toute fuite d'information.
+- **Mode Haute Sécurité :** Activé si le package commence par `pf.gov` (offuscation des classes et méthodes).
+- **Suppression des commentaires :** Nettoyage complet pour éviter les fuites d'informations.
 
 ### 🔓 Désoffuscation (Retour IA)
-Permet de restaurer les noms originaux dans le texte généré par l'IA en utilisant le dictionnaire de mapping stocké localement.
+Restaure les noms originaux dans le texte généré par l'IA en utilisant le dictionnaire de mapping stocké localement.
 
 ### 💾 Persistance et Session
-- **Dictionnaire local :** Les correspondances entre les noms originaux et les identifiants offusqués sont sauvegardées dans le `localStorage` du navigateur.
-- **Cumulatif :** Le dictionnaire s'enrichit à chaque session d'offuscation, permettant de désoffusquer des réponses d'IA basées sur plusieurs fichiers différents.
-- **Reset de session :** Possibilité de vider manuellement le dictionnaire.
+- **Dictionnaire local :** Les correspondances sont sauvegardées dans le `localStorage`.
+- **Cumulatif :** Le dictionnaire s'enrichit au fil des sessions.
 
 ## 3. Stack Technique
 - **Frontend :** HTML5, CSS3, Vanilla JavaScript (ES6+).
-- **Analyse Syntaxique :** `java-parser` pour la génération de l'AST.
-- **Outil de Build :** Vite + `vite-plugin-singlefile` pour une portabilité totale.
+- **Analyse Syntaxique :** `java-parser`.
+- **Desktop :** [Tauri v2](https://tauri.app/).
+- **Outil de Build :** Vite + `vite-plugin-singlefile`.
 - **Gestionnaire de paquets :** `pnpm`.
 
-## 4. Installation et Utilisation
+## 4. Installation et Développement
 
 ### Prérequis
-- Node.js (v18+)
-- pnpm
+- **Node.js** (v18+)
+- **pnpm** (`npm install -g pnpm`)
+- **Rust** (pour la version desktop) : [Installer Rust](https://www.rust-lang.org/tools/install)
 
-### Installation
+### Installation des dépendances
 ```bash
 pnpm install
 ```
 
 ### Développement
-Pour lancer le serveur de développement avec rechargement à chaud :
-```bash
-pnpm dev
-```
+- **Version Web :** `pnpm dev` (ouvre `http://localhost:5173`)
+- **Version Desktop :** `pnpm tauri dev`
 
-### Construction (Build)
-Pour générer le fichier HTML unique portable dans le dossier `dist/` :
+## 5. Construction (Build)
+
+### Générer le fichier HTML unique (Web)
+Le fichier sera généré dans le dossier `dist/index.html`.
 ```bash
 pnpm build
 ```
 
-## 5. Architecture du Projet
-- `index.html` : Interface utilisateur et structure.
-- `src/main.js` : Gestion des événements UI et orchestration.
-- `src/obfuscator.js` : Logique d'analyse AST, offuscation et désoffuscation.
-- `src/storage.js` : Gestion de la persistance locale et versionning.
+### Générer l'application de bureau (Tauri)
+Pour compiler l'exécutable pour votre plateforme :
+
+**Prérequis spécifiques par OS :**
+- **Windows :** [C++ Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- **Linux :** Dépendances système (ex: `libwebkit2gtk-4.1-dev`, `build-essential`, `curl`, `wget`, `file`, `libssl-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`)
+- **macOS :** Xcode Command Line Tools (`xcode-select --install`)
+
+**Commande de build :**
+```bash
+pnpm tauri build
+```
+Les installateurs seront disponibles dans `src-tauri/target/release/bundle/`.
+
+## 6. Architecture du Projet
+- `index.html` : Interface utilisateur.
+- `src/` : Logique frontend (main, obfuscator, storage).
+- `src-tauri/` : Configuration et code natif Tauri (Rust).
 - `vite.config.js` : Configuration du build single-file.
 
 ---
