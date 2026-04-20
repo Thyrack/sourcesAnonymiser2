@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputAi = document.getElementById('input-ai');
     const btnRestore = document.getElementById('btn-restore');
     const outputRestored = document.getElementById('output-restored');
+    const btnCopyObfuscated = document.getElementById('btn-copy-obfuscated');
+    const btnCopyRestored = document.getElementById('btn-copy-restored');
 
     // Initialize
     versionDisplay.textContent = `v${APP_VERSION}`;
@@ -74,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCounter();
 
             outputObfuscated.value = obfuscatedCode;
+            btnCopyObfuscated.disabled = false;
         } catch (err) {
             showError(err.message);
         }
@@ -88,6 +91,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const restoredText = deobfuscate(aiText, currentMapping);
 
         outputRestored.value = restoredText;
+        btnCopyRestored.disabled = false;
+    });
+
+    // Copy Action Helpers
+    function handleCopy(button, textToCopy) {
+        if (!textToCopy) return;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalText = button.innerHTML;
+            button.innerHTML = "✅ Copié !";
+            setTimeout(() => {
+                button.innerHTML = originalText;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    }
+
+    btnCopyObfuscated.addEventListener('click', () => {
+        handleCopy(btnCopyObfuscated, outputObfuscated.value);
+    });
+
+    btnCopyRestored.addEventListener('click', () => {
+        handleCopy(btnCopyRestored, outputRestored.value);
     });
 
     // Theme Toggle
@@ -119,6 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reset button states
             btnObfuscate.disabled = true;
             btnRestore.disabled = true;
+            btnCopyObfuscated.disabled = true;
+            btnCopyRestored.disabled = true;
         }
     });
 });
