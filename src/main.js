@@ -26,8 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
     versionDisplay.textContent = `v${APP_VERSION}`;
     updateCounter();
 
+    // Initialize button states based on potential browser auto-fill
+    btnObfuscate.disabled = inputJava.value.trim().length === 0;
+    btnRestore.disabled = inputAi.value.trim().length === 0;
+
     function updateCounter() {
-        entryCountDisplay.textContent = getDictionaryCount();
+        const count = getDictionaryCount();
+        entryCountDisplay.textContent = count;
+        btnReset.disabled = count === 0;
     }
 
     function showError(msg) {
@@ -39,6 +45,15 @@ document.addEventListener('DOMContentLoaded', () => {
         obfuscateError.style.display = 'none';
         obfuscateError.textContent = '';
     }
+
+    // Input Events
+    inputJava.addEventListener('input', () => {
+        btnObfuscate.disabled = inputJava.value.trim().length === 0;
+    });
+
+    inputAi.addEventListener('input', () => {
+        btnRestore.disabled = inputAi.value.trim().length === 0;
+    });
 
     // Obfuscate Action
     btnObfuscate.addEventListener('click', () => {
@@ -81,6 +96,10 @@ document.addEventListener('DOMContentLoaded', () => {
             inputAi.value = '';
             outputRestored.value = '';
             hideError();
+
+            // Reset button states
+            btnObfuscate.disabled = true;
+            btnRestore.disabled = true;
         }
     });
 });
