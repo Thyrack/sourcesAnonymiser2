@@ -48,7 +48,8 @@ pnpm install
 ## 5. Construction (Build)
 
 ### Générer le fichier HTML unique (Web)
-Le fichier sera généré dans le dossier `dist/index.html`.
+Le fichier sera généré dans le dossier `dist/index.html`. Ce fichier est entièrement autonome : vous pouvez le déplacer et l'utiliser en double-cliquant dessus pour l'ouvrir dans n'importe quel navigateur moderne, sans avoir besoin d'un serveur.
+
 ```bash
 pnpm build
 ```
