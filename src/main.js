@@ -3,7 +3,9 @@ import {
     loadDictionary,
     mergeDictionary,
     clearDictionary,
-    getDictionaryCount
+    getDictionaryCount,
+    getTheme,
+    saveTheme
 } from './storage.js';
 import { obfuscate, deobfuscate } from './obfuscator.js';
 
@@ -12,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const versionDisplay = document.getElementById('version-display');
     const entryCountDisplay = document.getElementById('entry-count');
     const btnReset = document.getElementById('btn-reset');
+    const btnThemeToggle = document.getElementById('btn-theme-toggle');
 
     const inputJava = document.getElementById('input-java');
     const btnObfuscate = document.getElementById('btn-obfuscate');
@@ -25,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize
     versionDisplay.textContent = `v${APP_VERSION}`;
     updateCounter();
+    initTheme();
 
     // Initialize button states based on potential browser auto-fill
     btnObfuscate.disabled = inputJava.value.trim().length === 0;
@@ -85,6 +89,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         outputRestored.value = restoredText;
     });
+
+    // Theme Toggle
+    btnThemeToggle.addEventListener('click', () => {
+        const isLight = document.body.classList.toggle('light-mode');
+        saveTheme(isLight ? 'light' : 'dark');
+    });
+
+    function initTheme() {
+        const theme = getTheme();
+        if (theme === 'light') {
+            document.body.classList.add('light-mode');
+        } else {
+            document.body.classList.remove('light-mode');
+        }
+    }
 
     // Reset Action
     btnReset.addEventListener('click', () => {
