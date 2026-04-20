@@ -1,5 +1,6 @@
 export const APP_VERSION = "1.0.0";
 const STORAGE_KEY = "java_vault_mapping";
+const THEME_KEY = "java_vault_theme";
 
 /**
  * Charge le dictionnaire depuis le localStorage
@@ -80,4 +81,20 @@ export function generateUniqueId(prefix) {
   }
 
   return `${prefix}_${maxId + 1}`;
+}
+
+/**
+ * Récupère le thème sauvegardé
+ * @returns {string} 'dark' ou 'light'
+ */
+export function getTheme() {
+  return localStorage.getItem(THEME_KEY) || 'dark';
+}
+
+/**
+ * Sauvegarde le thème
+ * @param {string} theme 'dark' ou 'light'
+ */
+export function saveTheme(theme) {
+  localStorage.setItem(THEME_KEY, theme);
 }
