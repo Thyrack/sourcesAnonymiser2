@@ -12,7 +12,9 @@ export default defineConfig({
     brotliSize: false,
     rollupOptions: {
       output: {
+        format: 'iife',
         manualChunks: undefined,
+        inlineDynamicImports: true,
       },
     },
   },
