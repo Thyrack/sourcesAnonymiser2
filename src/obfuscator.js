@@ -197,6 +197,15 @@ export function obfuscate(code, currentMapping = {}) {
 
   const finalReplacements = [];
 
+  // Performance optimization: Pre-compute reverse mapping for O(1) lookups
+  // This avoids O(N*M) where N is nodesToReplace and M is Object.keys(currentMapping)
+  const reverseMapping = new Map();
+  for (const key of currentMappingKeys) {
+      if (!reverseMapping.has(currentMapping[key])) {
+          reverseMapping.set(currentMapping[key], key);
+      }
+  }
+
   // Assigner les IDs et préparer les remplacements
   for (const n of nodesToReplace) {
       if (n.type === 'COMMENT') {
@@ -205,7 +214,7 @@ export function obfuscate(code, currentMapping = {}) {
       }
 
       let id;
-      const existingKeyGlobal = Object.keys(currentMapping).find(k => currentMapping[k] === n.value);
+      const existingKeyGlobal = reverseMapping.get(n.value);
 
       if (existingKeyGlobal) {
           id = existingKeyGlobal;
