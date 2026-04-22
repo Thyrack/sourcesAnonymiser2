@@ -244,10 +244,23 @@ export function obfuscate(code, currentMapping = {}) {
   }
 
   // Appliquer les remplacements
-  let obfuscatedCode = code;
-  for (const rep of resolvedReplacements) {
-      obfuscatedCode = obfuscatedCode.substring(0, rep.startOffset) + rep.newText + obfuscatedCode.substring(rep.endOffset + 1);
+  // Performance optimization: Avoid O(K*N) iterative string replacement using substring in a loop.
+  // Instead, collect chunks in an array and use Array.join('') for an O(N) single-pass reconstruction.
+  const chunks = [];
+  let currentIndex = 0;
+  // resolvedReplacements is sorted by startOffset descending, so we iterate from the end to process left-to-right
+  for (let i = resolvedReplacements.length - 1; i >= 0; i--) {
+      const rep = resolvedReplacements[i];
+      if (rep.startOffset > currentIndex) {
+          chunks.push(code.substring(currentIndex, rep.startOffset));
+      }
+      chunks.push(rep.newText);
+      currentIndex = rep.endOffset + 1;
   }
+  if (currentIndex < code.length) {
+      chunks.push(code.substring(currentIndex));
+  }
+  const obfuscatedCode = chunks.join('');
 
   return { obfuscatedCode, newMapping };
 }
