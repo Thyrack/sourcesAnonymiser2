@@ -20,10 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnObfuscate = document.getElementById('btn-obfuscate');
     const outputObfuscated = document.getElementById('output-obfuscated');
     const obfuscateError = document.getElementById('obfuscate-error');
+    const btnCopyObfuscated = document.getElementById('btn-copy-obfuscated');
 
     const inputAi = document.getElementById('input-ai');
     const btnRestore = document.getElementById('btn-restore');
     const outputRestored = document.getElementById('output-restored');
+    const btnCopyRestored = document.getElementById('btn-copy-restored');
 
     // Initialize
     versionDisplay.textContent = `v${APP_VERSION}`;
@@ -74,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCounter();
 
             outputObfuscated.value = obfuscatedCode;
+            btnCopyObfuscated.disabled = false;
         } catch (err) {
             showError(err.message);
         }
@@ -88,6 +91,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const restoredText = deobfuscate(aiText, currentMapping);
 
         outputRestored.value = restoredText;
+        btnCopyRestored.disabled = false;
+    });
+
+    // Copy Functionality
+    function handleCopy(button, text) {
+        if (!text) return;
+        navigator.clipboard.writeText(text).then(() => {
+            button.textContent = '✅ Copié !';
+            setTimeout(() => {
+                button.textContent = '📋 Copier';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    }
+
+    btnCopyObfuscated.addEventListener('click', () => {
+        handleCopy(btnCopyObfuscated, outputObfuscated.value);
+    });
+
+    btnCopyRestored.addEventListener('click', () => {
+        handleCopy(btnCopyRestored, outputRestored.value);
     });
 
     // Theme Toggle
@@ -119,6 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reset button states
             btnObfuscate.disabled = true;
             btnRestore.disabled = true;
+            btnCopyObfuscated.disabled = true;
+            btnCopyRestored.disabled = true;
         }
     });
 });
