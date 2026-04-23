@@ -20,10 +20,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnObfuscate = document.getElementById('btn-obfuscate');
     const outputObfuscated = document.getElementById('output-obfuscated');
     const obfuscateError = document.getElementById('obfuscate-error');
+    const btnCopyObfuscated = document.getElementById('btn-copy-obfuscated');
 
     const inputAi = document.getElementById('input-ai');
     const btnRestore = document.getElementById('btn-restore');
     const outputRestored = document.getElementById('output-restored');
+    const btnCopyRestored = document.getElementById('btn-copy-restored');
 
     // Initialize
     versionDisplay.textContent = `v${APP_VERSION}`;
@@ -33,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize button states based on potential browser auto-fill
     btnObfuscate.disabled = inputJava.value.trim().length === 0;
     btnRestore.disabled = inputAi.value.trim().length === 0;
+    btnCopyObfuscated.disabled = outputObfuscated.value.trim().length === 0;
+    btnCopyRestored.disabled = outputRestored.value.trim().length === 0;
 
     function updateCounter() {
         const count = getDictionaryCount();
@@ -74,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCounter();
 
             outputObfuscated.value = obfuscatedCode;
+            btnCopyObfuscated.disabled = false;
         } catch (err) {
             showError(err.message);
         }
@@ -88,7 +93,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const restoredText = deobfuscate(aiText, currentMapping);
 
         outputRestored.value = restoredText;
+        btnCopyRestored.disabled = false;
     });
+
+    // Copy Actions
+    async function handleCopy(button, textElement) {
+        const text = textElement.value.trim();
+        if (!text) return;
+
+        try {
+            await navigator.clipboard.writeText(text);
+            const originalText = button.innerHTML;
+            button.innerHTML = '✅ Copié !';
+            setTimeout(() => {
+                button.innerHTML = originalText;
+            }, 2000);
+        } catch (err) {
+            console.error('Erreur lors de la copie', err);
+        }
+    }
+
+    btnCopyObfuscated.addEventListener('click', () => handleCopy(btnCopyObfuscated, outputObfuscated));
+    btnCopyRestored.addEventListener('click', () => handleCopy(btnCopyRestored, outputRestored));
 
     // Theme Toggle
     btnThemeToggle.addEventListener('click', () => {
@@ -119,6 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reset button states
             btnObfuscate.disabled = true;
             btnRestore.disabled = true;
+            btnCopyObfuscated.disabled = true;
+            btnCopyRestored.disabled = true;
         }
     });
 });
