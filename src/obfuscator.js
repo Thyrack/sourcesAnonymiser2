@@ -244,10 +244,20 @@ export function obfuscate(code, currentMapping = {}) {
   }
 
   // Appliquer les remplacements
-  let obfuscatedCode = code;
-  for (const rep of resolvedReplacements) {
-      obfuscatedCode = obfuscatedCode.substring(0, rep.startOffset) + rep.newText + obfuscatedCode.substring(rep.endOffset + 1);
+  // Performance optimization: Use array chunking for O(N) reconstruction instead of O(K*N) iterative substring replacements
+  const chunks = [];
+  let lastIndex = 0;
+  // resolvedReplacements is sorted by startOffset descending, so we iterate in reverse
+  // to process the string from left to right.
+  for (let i = resolvedReplacements.length - 1; i >= 0; i--) {
+      const rep = resolvedReplacements[i];
+      chunks.push(code.substring(lastIndex, rep.startOffset));
+      chunks.push(rep.newText);
+      lastIndex = rep.endOffset + 1;
   }
+  chunks.push(code.substring(lastIndex));
+
+  const obfuscatedCode = chunks.join('');
 
   return { obfuscatedCode, newMapping };
 }
