@@ -7,13 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "jest --config=jest.config.js"
   },
   "dependencies": {
     "java-parser": "^2.3.2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
+    "ts-jest": "^29.4.9",
+    "typescript": "^6.0.3",
     "vite": "^5.0.0",
     "vite-plugin-singlefile": "^2.0.0"
   }
