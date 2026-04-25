@@ -9,3 +9,7 @@
 ## 2026-04-23 - [O(N) Iterative String Reconstruction]
 **Learning:** Using `substring()` and string concatenation (`+`) inside a loop for iterative string replacements creates O(K*N) time complexity and excessive memory allocation (where K is string length and N is number of replacements). This creates severe performance issues with many replacements (e.g., 12 seconds vs 11 milliseconds for 50,000 replacements).
 **Action:** Use an array chunking approach: collect string segments and replacements in an array (`chunks.push(...)`) and use a single `chunks.join('')` at the end for an O(N) single-pass string reconstruction.
+
+## 2026-04-25 - Prevent Redundant Main-Thread Blocking on large Dictionaries
+**Learning:** Frequent `localStorage.getItem()` and subsequent `JSON.parse()` for large mapping dictionaries causes significant main-thread blocking, particularly when doing sequential operations like `mergeDictionary` followed by `getDictionaryCount` in loops or rapid user actions. `localStorage` reads are synchronous and comparatively slow.
+**Action:** Implement an in-memory variable to cache the parsed dictionary. Ensure all write operations (save, merge, clear) accurately update or invalidate this cache to maintain consistency and prevent redundant synchronous storage lookups.
