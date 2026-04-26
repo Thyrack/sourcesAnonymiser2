@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnRestore = document.getElementById('btn-restore');
     const outputRestored = document.getElementById('output-restored');
 
+    const btnCopyObfuscated = document.getElementById('btn-copy-obfuscated');
+    const btnCopyRestored = document.getElementById('btn-copy-restored');
+
     // Initialize
     versionDisplay.textContent = `v${APP_VERSION}`;
     updateCounter();
@@ -33,6 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize button states based on potential browser auto-fill
     btnObfuscate.disabled = inputJava.value.trim().length === 0;
     btnRestore.disabled = inputAi.value.trim().length === 0;
+    btnCopyObfuscated.disabled = outputObfuscated.value.length === 0;
+    btnCopyRestored.disabled = outputRestored.value.length === 0;
 
     function updateCounter() {
         const count = getDictionaryCount();
@@ -74,6 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCounter();
 
             outputObfuscated.value = obfuscatedCode;
+            btnCopyObfuscated.disabled = obfuscatedCode.length === 0;
         } catch (err) {
             showError(err.message);
         }
@@ -88,6 +94,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const restoredText = deobfuscate(aiText, currentMapping);
 
         outputRestored.value = restoredText;
+        btnCopyRestored.disabled = restoredText.length === 0;
+    });
+
+    // Copy Actions
+    async function copyToClipboard(buttonElement, textElement) {
+        if (!textElement.value) return;
+
+        try {
+            await navigator.clipboard.writeText(textElement.value);
+            const originalText = buttonElement.innerHTML;
+            buttonElement.innerHTML = '✅ Copié !';
+            setTimeout(() => {
+                buttonElement.innerHTML = originalText;
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    }
+
+    btnCopyObfuscated.addEventListener('click', () => {
+        copyToClipboard(btnCopyObfuscated, outputObfuscated);
+    });
+
+    btnCopyRestored.addEventListener('click', () => {
+        copyToClipboard(btnCopyRestored, outputRestored);
     });
 
     // Theme Toggle
@@ -119,6 +150,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reset button states
             btnObfuscate.disabled = true;
             btnRestore.disabled = true;
+            btnCopyObfuscated.disabled = true;
+            btnCopyRestored.disabled = true;
         }
     });
 });
