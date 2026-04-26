@@ -9,3 +9,6 @@
 ## 2026-04-23 - [O(N) Iterative String Reconstruction]
 **Learning:** Using `substring()` and string concatenation (`+`) inside a loop for iterative string replacements creates O(K*N) time complexity and excessive memory allocation (where K is string length and N is number of replacements). This creates severe performance issues with many replacements (e.g., 12 seconds vs 11 milliseconds for 50,000 replacements).
 **Action:** Use an array chunking approach: collect string segments and replacements in an array (`chunks.push(...)`) and use a single `chunks.join('')` at the end for an O(N) single-pass string reconstruction.
+## 2024-04-26 - [localStorage Caching & Cross-Tab Sync]
+**Learning:** Adding an in-memory cache for large JSON payloads in `localStorage` significantly reduces main thread blocking by avoiding redundant `JSON.parse()` calls. However, a static cache breaks cross-tab synchronization.
+**Action:** Always include a `window.addEventListener('storage', ...)` handler when implementing in-memory caching for `localStorage` to invalidate the cache when changes occur in other tabs.
