@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.1.0";
 const STORAGE_KEY = "java_vault_mapping";
 const THEME_KEY = "java_vault_theme";
 

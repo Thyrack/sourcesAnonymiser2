@@ -18,9 +18,18 @@ L'offuscation s'appuie sur une analyse syntaxique réelle via `java-parser` (AST
 ### 🔓 Désoffuscation (Retour IA)
 Restaure les noms originaux dans le texte généré par l'IA en utilisant le dictionnaire de mapping stocké localement.
 
-### 💾 Persistance et Session
-- **Dictionnaire local :** Les correspondances sont sauvegardées dans le `localStorage`.
-- **Cumulatif :** Le dictionnaire s'enrichit au fil des sessions.
+### 📂 Gestion de Fichiers et Batch
+- **Chargement multiple :** Support du glisser-déposer ou de la sélection de plusieurs fichiers `.java`.
+- **Traitement par lot :** Offuscation cohérente sur l'ensemble des fichiers chargés.
+
+### 💾 Persistance et Partage
+- **Dictionnaire local :** Les correspondances sont sauvegardées dans le `localStorage` avec mise en cache mémoire pour la performance.
+- **Import/Export :** Possibilité d'exporter le dictionnaire au format JSON pour le sauvegarder ou le partager entre différents postes.
+
+### 🎨 Expérience Utilisateur (UX)
+- **Mode Sombre/Clair :** Thème adaptatif avec mémorisation de la préférence utilisateur.
+- **Raccourcis Clavier :** `Ctrl+Enter` pour lancer l'offuscation/désoffuscation rapidement.
+- **Feedback visuel :** Boutons de copie avec confirmation et gestion d'état.
 
 ## 3. Stack Technique
 - **Frontend :** HTML5, CSS3, Vanilla JavaScript (ES6+).
@@ -75,4 +84,4 @@ Les installateurs seront disponibles dans `src-tauri/target/release/bundle/`.
 - `vite.config.js` : Configuration du build single-file.
 
 ---
-*Version 1.0.0*
+*Version 1.1.0*
