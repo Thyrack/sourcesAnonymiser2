@@ -3,12 +3,7 @@
 > vite
 
 
-  VITE v5.4.21  ready in 326 ms
+  VITE v5.4.21  ready in 359 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose
-7:28:18 PM [vite] page reload src/obfuscator.js
-7:28:28 PM [vite] page reload src/obfuscator.js
-7:28:32 PM [vite] page reload src/obfuscator.js
-7:28:44 PM [vite] page reload src/obfuscator.js
-7:28:50 PM [vite] page reload src/obfuscator.js
