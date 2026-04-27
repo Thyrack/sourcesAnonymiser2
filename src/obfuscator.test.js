@@ -278,3 +278,114 @@ public class MyClass {}`;
         expect(result.obfuscatedCode).not.toContain('Class_2'); // Should not obfuscate JAVA to Class_N
     });
 });
+
+describe('SQL Obfuscation Tests', () => {
+    test('should obfuscate simple SQL query', () => {
+        const sql = `SELECT name, age FROM users WHERE id = 1;`;
+        const result = obfuscate(sql);
+        // Keywords like SELECT, FROM, WHERE should be preserved
+        expect(result.obfuscatedCode).toContain('SELECT');
+        expect(result.obfuscatedCode).toContain('FROM');
+        expect(result.obfuscatedCode).toContain('WHERE');
+        // Identifiers should be obfuscated
+        expect(result.obfuscatedCode).not.toContain('name');
+        expect(result.obfuscatedCode).not.toContain('users');
+        expect(result.obfuscatedCode).toContain('Var_1');
+    });
+
+    test('should obfuscate PL/SQL blocks and preserve comments', () => {
+        const plsql = `
+DECLARE
+  l_name VARCHAR2(100);
+BEGIN
+  -- This is a comment
+  SELECT first_name INTO l_name FROM employees WHERE employee_id = 100;
+END;`;
+        const result = obfuscate(plsql);
+        expect(result.obfuscatedCode).toContain('DECLARE');
+        expect(result.obfuscatedCode).toContain('BEGIN');
+        expect(result.obfuscatedCode).toContain('END');
+        expect(result.obfuscatedCode).not.toContain('l_name');
+        expect(result.obfuscatedCode).not.toContain('employees');
+        expect(result.obfuscatedCode).not.toContain('This is a comment');
+    });
+
+    test('should obfuscate PostgreSQL specific syntax', () => {
+        const sql = `SELECT info->'name' FROM users WHERE id = '123'::uuid;`;
+        const result = obfuscate(sql);
+        expect(result.obfuscatedCode).toContain('SELECT');
+        expect(result.obfuscatedCode).toContain('FROM');
+        expect(result.obfuscatedCode).toContain('WHERE');
+        expect(result.obfuscatedCode).toContain('STR_1'); // 'name'
+        expect(result.obfuscatedCode).toContain('STR_2'); // '123'
+        expect(result.obfuscatedCode).toContain('uuid'); // keyword
+    });
+});
+
+describe('Multi-language Support Tests', () => {
+    test('should obfuscate multiple units of different languages', () => {
+        const code = `// --- FILE: script.js ---
+function main() { console.log("js"); }
+
+// --- FILE: query.sql ---
+SELECT name FROM employees;
+
+// --- FILE: App.java ---
+public class App {}
+`;
+        const result = obfuscate(code);
+        expect(result.obfuscatedCode).toContain('function');
+        expect(result.obfuscatedCode).toContain('SELECT');
+        expect(result.obfuscatedCode).toContain('public class');
+        expect(result.obfuscatedCode).toContain('Var_1'); // main
+        expect(result.obfuscatedCode).toContain('Var_2'); // name or employees
+        expect(result.obfuscatedCode).toContain('Class_1'); // App
+    });
+
+    test('should not treat -- as comment in JS or Java', () => {
+        const js = `let i = 10; i--; console.log(i);`;
+        const resultJS = obfuscate(js);
+        expect(resultJS.obfuscatedCode).toContain('--');
+        expect(resultJS.obfuscatedCode).toContain('console.log');
+
+        const java = `public class Test { void m() { int i = 0; i--; } }`;
+        const resultJava = obfuscate(java);
+        expect(resultJava.obfuscatedCode).toContain('--');
+    });
+});
+
+describe('Javascript/Typescript Obfuscation Tests', () => {
+    test('should obfuscate simple JS function', () => {
+        const js = `
+function greet(person) {
+    const message = "Hello " + person;
+    console.log(message);
+    return message;
+}`;
+        const result = obfuscate(js);
+        expect(result.obfuscatedCode).toContain('function');
+        expect(result.obfuscatedCode).toContain('const');
+        expect(result.obfuscatedCode).toContain('return');
+        expect(result.obfuscatedCode).toContain('console.log');
+        expect(result.obfuscatedCode).not.toContain('greet');
+        expect(result.obfuscatedCode).not.toContain('person');
+        expect(result.obfuscatedCode).toContain('STR_1'); // "Hello "
+    });
+
+    test('should obfuscate TS class', () => {
+        const ts = `
+export class User {
+    private id: number;
+    constructor(public name: string) {}
+    getId(): number { return this.id; }
+}`;
+        const result = obfuscate(ts);
+        expect(result.obfuscatedCode).toContain('export class');
+        expect(result.obfuscatedCode).toContain('private');
+        expect(result.obfuscatedCode).toContain('constructor');
+        expect(result.obfuscatedCode).toContain('number');
+        expect(result.obfuscatedCode).toContain('string');
+        expect(result.obfuscatedCode).not.toContain('User');
+        expect(result.obfuscatedCode).not.toContain('getId');
+    });
+});

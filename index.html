@@ -275,8 +275,8 @@
       <strong>Entrées en dictionnaire :</strong> <span id="entry-count">0</span>
     </div>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <button class="secondary" id="btn-load-files" aria-label="Charger des fichiers Java">📁 Charger des fichiers</button>
-      <input type="file" id="input-load-files" accept=".java" multiple style="display: none;">
+        <button class="secondary" id="btn-load-files" aria-label="Charger des fichiers (Java, SQL, JS, TS)">📁 Charger des fichiers</button>
+        <input type="file" id="input-load-files" accept=".java,.sql,.js,.ts" multiple style="display: none;">
       <button class="secondary" id="btn-export" aria-label="Exporter le dictionnaire vers un fichier JSON" disabled>📤 Exporter</button>
       <button class="secondary" id="btn-import" aria-label="Importer un dictionnaire depuis un fichier JSON">📥 Importer</button>
       <input type="file" id="input-import-file" accept=".json" style="display: none;">
@@ -309,8 +309,8 @@
     <div class="section">
       <h2>Préparation (Aller)</h2>
       <div id="obfuscate-error" class="error-msg" aria-live="polite"></div>
-      <textarea id="input-java" placeholder="Collez le code Java original ici" aria-label="Code Java original"></textarea>
-      <button id="btn-obfuscate" aria-label="Offusquer le code Java (Raccourci : Ctrl+Enter)" title="Raccourci : Ctrl+Enter" disabled>🔒 Offusquer</button>
+      <textarea id="input-java" placeholder="Collez le code original ici (Java, SQL, JS, TS)" aria-label="Code original"></textarea>
+      <button id="btn-obfuscate" aria-label="Offusquer le code (Raccourci : Ctrl+Enter)" title="Raccourci : Ctrl+Enter" disabled>🔒 Offusquer</button>
       <div class="output-container">
         <button id="btn-copy-obfuscated" class="btn-copy" disabled aria-label="Copier le code offusqué">Copier</button>
         <textarea id="output-obfuscated" readonly placeholder="Code offusqué à copier pour l'IA" aria-label="Code offusqué généré"></textarea>

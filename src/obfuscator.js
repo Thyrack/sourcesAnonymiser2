@@ -13,7 +13,38 @@ const SAFE_IDENTIFIERS = new Set([
   'removeEnd', 'format', 'split', 'join', 'replace', 'replaceAll', 'trim', 'toLowerCase', 'toUpperCase',
   'override', 'SuppressWarnings', 'unchecked', 'serial',
   'main', 'args', 'final', 'static', 'public', 'private', 'protected', 'abstract', 'class', 'interface', 'enum',
-  'void', 'int', 'long', 'double', 'float', 'boolean', 'char', 'byte', 'short'
+  'void', 'int', 'long', 'double', 'float', 'boolean', 'char', 'byte', 'short',
+  'return', 'this', 'new', 'if', 'else', 'for', 'while', 'try', 'catch', 'finally', 'throw', 'throws',
+  'extends', 'implements', 'package', 'import', 'instanceof', 'switch', 'case', 'break', 'continue', 'default',
+  'synchronized', 'volatile', 'transient', 'native', 'strictfp', 'super'
+]);
+
+const SQL_KEYWORDS = new Set([
+  'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE',
+  'CREATE', 'TABLE', 'INDEX', 'VIEW', 'PROCEDURE', 'FUNCTION', 'BEGIN', 'END', 'DECLARE', 'IF', 'THEN',
+  'ELSE', 'ELSIF', 'LOOP', 'WHILE', 'FOR', 'IN', 'OUT', 'INOUT', 'RETURN', 'RETURNS', 'LANGUAGE', 'AS', 'IS',
+  'REPLACE', 'OR', 'TABLESPACE', 'GRANT', 'TO', 'UNION', 'ALL', 'EXISTS', 'IN', 'JOIN', 'ON', 'LEFT', 'RIGHT',
+  'INNER', 'OUTER', 'FULL', 'GROUP', 'BY', 'ORDER', 'HAVING', 'LIMIT', 'OFFSET', 'FETCH', 'NEXT', 'ONLY',
+  'ROW', 'ROWS', 'NUMBER', 'VARCHAR2', 'VARCHAR', 'CHAR', 'DATE', 'TIMESTAMP', 'CLOB', 'BLOB', 'RAW',
+  'INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 'NUMERIC', 'BOOLEAN', 'TEXT', 'BYTEA', 'UUID', 'SERIAL',
+  'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'CHECK', 'UNIQUE', 'CONSTRAINT', 'NULL', 'DEFAULT',
+  'TYPE', 'TRIGGER', 'SEQUENCE', 'DATABASE', 'SCHEMA', 'COMMENT', 'EXECUTE', 'USING', 'OPEN', 'CLOSE', 'TABLE',
+  'FETCH', 'INTO', 'BULK', 'COLLECT', 'LIMIT', 'COUNT', 'MIN', 'MAX', 'AVG', 'SUM', 'COALESCE', 'NVL',
+  'TO_CHAR', 'TO_DATE', 'TO_NUMBER', 'SYSDATE', 'CURRENT_TIMESTAMP', 'DUAL'
+]);
+
+const JS_KEYWORDS = new Set([
+  'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default', 'delete', 'do', 'else',
+  'enum', 'export', 'extends', 'false', 'finally', 'for', 'function', 'if', 'import', 'in', 'instanceof',
+  'new', 'null', 'return', 'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void',
+  'while', 'with', 'yield', 'async', 'await', 'let', 'static', 'public', 'private', 'protected', 'readonly',
+  'interface', 'type', 'namespace', 'abstract', 'as', 'boolean', 'constructor', 'declare', 'get', 'is', 'export',
+  'keyof', 'module', 'never', 'number', 'object', 'set', 'string', 'symbol', 'undefined', 'unknown',
+  'console', 'log', 'error', 'warn', 'info', 'debug', 'window', 'document', 'process', 'require', 'module', 'exports',
+  'Map', 'Set', 'Array', 'Object', 'String', 'Number', 'Boolean', 'Date', 'Promise', 'JSON', 'Math', 'Error',
+  'length', 'push', 'pop', 'shift', 'unshift', 'splice', 'slice', 'indexOf', 'lastIndexOf', 'forEach', 'map',
+  'filter', 'reduce', 'reduceRight', 'some', 'every', 'find', 'findIndex', 'includes', 'join', 'toString',
+  'then', 'catch', 'finally', 'resolve', 'reject', 'all', 'race', 'allSettled', 'any'
 ]);
 
 const SAFE_STRINGS = new Set([
@@ -23,7 +54,7 @@ const SAFE_STRINGS = new Set([
 /**
  * Extrait manuellement les commentaires (ligne et bloc) en gérant les chaînes de caractères
  */
-function getComments(text) {
+function getComments(text, isSql = false) {
   const comments = [];
   let inString = false;
   let inChar = false;
@@ -44,7 +75,7 @@ function getComments(text) {
       inString = true;
     } else if (text[i] === "'") {
       inChar = true;
-    } else if (text[i] === '/' && text[i+1] === '/') {
+    } else if ((text[i] === '/' && text[i+1] === '/') || (isSql && text[i] === '-' && text[i+1] === '-')) {
       const startOffset = i;
       let j = i + 2;
       while(j < text.length && text[j] !== '\n') j++;
@@ -89,6 +120,43 @@ function isClassName(name) {
 }
 
 /**
+ * Détécte le langage du code donné par heuristique.
+ */
+function detectLanguage(code) {
+    const javaKeywords = ['package', 'import', 'public', 'private', 'class', 'interface', 'extends', 'implements'];
+    const sqlKeywords = ['SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'DECLARE', 'BEGIN'];
+    const jsKeywords = ['function', 'const', 'let', 'var', 'export', 'import'];
+
+    // 1. Check for very specific JS/TS tokens first
+    if (/\b(export|let|const|async|await|constructor)\b/.test(code) || code.includes('=>') || /console\.\w+/.test(code)) return 'javascript';
+
+    // 2. Check for SQL specific patterns
+    let sqlScore = 0;
+    sqlKeywords.forEach(k => {
+        if (new RegExp(`\\b${k}\\b`, 'i').test(code)) sqlScore++;
+    });
+    if (sqlScore >= 2) return 'sql';
+    if (/\b(CREATE\s+OR\s+REPLACE|INSERT\s+INTO|UPDATE\s+.*?SET|DECLARE|BEGIN)\b/i.test(code)) return 'sql';
+
+    // 3. Check for Java
+    let javaScore = 0;
+    javaKeywords.forEach(k => {
+        if (new RegExp(`\\b${k}\\b`).test(code)) javaScore++;
+    });
+    if (javaScore >= 2) return 'java';
+
+    // 4. Check for JS/TS
+    let jsScore = 0;
+    jsKeywords.forEach(k => {
+        if (new RegExp(`\\b${k}\\b`).test(code)) jsScore++;
+    });
+    if (jsScore >= 1) return 'javascript';
+
+    // Default to java if we are unsure but it looks like code
+    return 'java';
+}
+
+/**
  * Splits the input code into multiple units based on FILE separators or package declarations.
  */
 function splitCode(code) {
@@ -100,7 +168,17 @@ function splitCode(code) {
     // Split by package, keeping the package keyword in the next part if it's not the first one.
     // We split at positions where a package declaration is preceded by a newline.
     const parts = code.split(/(?=\n\s*package\s+[\w.]+\s*;)/);
-    return parts.filter(s => s.trim().length > 0);
+    if (parts.length > 1) {
+        return parts.filter(s => s.trim().length > 0);
+    }
+
+    // Also try splitting by common SQL delimiters if it looks like SQL
+    if (/CREATE\s+OR\s+REPLACE\s+/i.test(code) || /DECLARE\s+/i.test(code)) {
+        const sqlParts = code.split(/(?=\bCREATE\s+OR\s+REPLACE\b|\bDECLARE\b|\bBEGIN\b)/i);
+        if (sqlParts.length > 1) return sqlParts.filter(s => s.trim().length > 0);
+    }
+
+    return [code];
 }
 
 /**
@@ -249,7 +327,7 @@ function obfuscateUnit(code, currentMapping, counters) {
     }
   });
 
-  const comments = getComments(code);
+  const comments = getComments(code, false);
   for (const c of comments) {
       const commentText = code.substring(c.startOffset, c.endOffset + 1);
       const match = commentText.match(fileSeparatorRegex);
@@ -369,8 +447,98 @@ function obfuscateUnit(code, currentMapping, counters) {
 }
 
 /**
- * Offusque le code Java donné (supporte plusieurs classes/fichiers)
- * @param {string} code Le code source Java original
+ * Offusque du code SQL ou Javascript via Regex.
+ */
+function obfuscateRegex(code, currentMapping, counters, keywords, typePrefix = 'Var', isSql = false) {
+    const nodesToReplace = [];
+    const comments = getComments(code, isSql);
+    for (const c of comments) {
+        nodesToReplace.push({ type: 'COMMENT', startOffset: c.startOffset, endOffset: c.endOffset, value: '' });
+    }
+
+    // Identifie les chaînes de caractères et les identifiants
+    const regex = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`([^`\\]|\\.)*`|\b[a-zA-Z_$][a-zA-Z\d_$]*\b/g;
+    let match;
+    while ((match = regex.exec(code)) !== null) {
+        const val = match[0];
+        const start = match.index;
+        const end = start + val.length - 1;
+
+        // Skip if inside a comment
+        if (comments.some(c => start >= c.startOffset && end <= c.endOffset)) continue;
+
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")) || (val.startsWith("`") && val.endsWith("`"))) {
+            nodesToReplace.push({ type: 'STR', startOffset: start, endOffset: end, value: val });
+        } else {
+            if (keywords.has(val) || keywords.has(val.toUpperCase())) continue;
+            nodesToReplace.push({ type: typePrefix, startOffset: start, endOffset: end, value: val });
+        }
+    }
+
+    const newMappingForUnit = {};
+    const localValueToId = Object.create(null);
+    const finalReplacements = [];
+
+    const reverseMapping = new Map();
+    for (const key in currentMapping) {
+        if (!reverseMapping.has(currentMapping[key])) {
+            reverseMapping.set(currentMapping[key], key);
+        }
+    }
+
+    for (const n of nodesToReplace) {
+        if (n.type === 'COMMENT') {
+            finalReplacements.push({ startOffset: n.startOffset, endOffset: n.endOffset, newText: '' });
+            continue;
+        }
+
+        let id;
+        const existingKeyGlobal = reverseMapping.get(n.value);
+
+        if (existingKeyGlobal) {
+            id = existingKeyGlobal;
+        } else if (localValueToId[n.value]) {
+            id = localValueToId[n.value];
+        } else {
+            let prefix = typePrefix;
+            if (n.type === 'STR') prefix = 'STR';
+
+            counters[prefix]++;
+            id = `${prefix}_${counters[prefix]}`;
+            localValueToId[n.value] = id;
+            newMappingForUnit[id] = n.value;
+            currentMapping[id] = n.value;
+            reverseMapping.set(n.value, id);
+        }
+        finalReplacements.push({ startOffset: n.startOffset, endOffset: n.endOffset, newText: id });
+    }
+
+    finalReplacements.sort((a, b) => b.startOffset - a.startOffset);
+    const resolvedReplacements = [];
+    let lastStart = Infinity;
+    for (const rep of finalReplacements) {
+        if (rep.endOffset < lastStart) {
+            resolvedReplacements.push(rep);
+            lastStart = rep.startOffset;
+        }
+    }
+
+    const chunks = [];
+    let lastIndex = 0;
+    for (let i = resolvedReplacements.length - 1; i >= 0; i--) {
+        const rep = resolvedReplacements[i];
+        chunks.push(code.substring(lastIndex, rep.startOffset));
+        chunks.push(rep.newText);
+        lastIndex = rep.endOffset + 1;
+    }
+    chunks.push(code.substring(lastIndex));
+
+    return { obfuscatedCode: chunks.join(''), newMapping: newMappingForUnit };
+}
+
+/**
+ * Offusque le code donné (supporte Java, SQL, JS/TS)
+ * @param {string} code Le code source original
  * @param {Object} currentMapping Le mapping actuellement dans le localStorage
  * @returns {Object} { obfuscatedCode, newMapping } ou throw une erreur
  */
@@ -398,10 +566,23 @@ export function obfuscate(code, currentMapping = {}) {
   }
 
   const obfuscatedUnits = units.map(unit => {
-      const { obfuscatedCode, newMapping } = obfuscateUnit(unit, cumulativeMapping, counters);
-      Object.assign(totalNewMapping, newMapping);
-      // cumulativeMapping is already updated inside obfuscateUnit (passed by reference)
-      return obfuscatedCode;
+      const lang = detectLanguage(unit);
+      let result;
+      if (lang === 'java') {
+          try {
+            result = obfuscateUnit(unit, cumulativeMapping, counters);
+          } catch (e) {
+            // If java parsing fails, fallback to regex-based obfuscation to be resilient
+            result = obfuscateRegex(unit, cumulativeMapping, counters, SAFE_IDENTIFIERS, 'Var', false);
+          }
+      } else if (lang === 'sql') {
+          result = obfuscateRegex(unit, cumulativeMapping, counters, SQL_KEYWORDS, 'Var', true);
+      } else {
+          result = obfuscateRegex(unit, cumulativeMapping, counters, JS_KEYWORDS, 'Var', false);
+      }
+
+      Object.assign(totalNewMapping, result.newMapping);
+      return result.obfuscatedCode;
   });
 
   return {
