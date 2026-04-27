@@ -207,8 +207,6 @@ function obfuscateUnit(code, currentMapping, counters) {
       const pkgName = ids.map(id => id.image).join('.');
       if (pkgName.startsWith('pf.gov')) {
           isHighSecurity = true;
-      } else {
-          ids.forEach(id => tokensToSkip.add(`${id.startOffset}|${id.image}`));
       }
     }
 
@@ -310,7 +308,7 @@ function obfuscateUnit(code, currentMapping, counters) {
         const val = node.image;
         if (SAFE_IDENTIFIERS.has(val)) return;
 
-        if (isHighSecurity || forceObfuscate) {
+        if (isHighSecurity || forceObfuscate || declaredClasses.has(val) || path.includes('packageDeclaration')) {
             let type = 'VAR';
             if (declaredClasses.has(val) || isClassName(val) || isConstant(val)) {
                 type = 'CLASS';
@@ -319,9 +317,8 @@ function obfuscateUnit(code, currentMapping, counters) {
         } else {
             if (declaredVars.has(val)) {
                 nodesToReplace.push({ type: 'VAR', startOffset: node.startOffset, endOffset: node.endOffset, value: val });
-            } else if (declaredClasses.has(val) || declaredMethods.has(val)) {
-                const type = declaredClasses.has(val) ? 'CLASS' : 'VAR';
-                nodesToReplace.push({ type: type, startOffset: node.startOffset, endOffset: node.endOffset, value: val });
+            } else if (declaredMethods.has(val)) {
+                nodesToReplace.push({ type: 'VAR', startOffset: node.startOffset, endOffset: node.endOffset, value: val });
             }
         }
     }
@@ -606,7 +603,13 @@ export function deobfuscate(text, mapping) {
     // Trier les clés par longueur décroissante
     keys.sort((a, b) => b.length - a.length);
     const escapedKeys = keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const pattern = new RegExp(escapedKeys.join('|'), 'g');
+    const pattern = new RegExp(escapedKeys.join('|'), 'gi');
 
-    return text.replace(pattern, matched => mapping[matched]);
+    // Create a case-insensitive lookup map
+    const ciMapping = Object.create(null);
+    for (const key of keys) {
+        ciMapping[key.toLowerCase()] = mapping[key];
+    }
+
+    return text.replace(pattern, matched => ciMapping[matched.toLowerCase()] || matched);
 }

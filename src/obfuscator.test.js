@@ -123,6 +123,17 @@ public class TempClass {
 
         expect(result).toBe(obfuscatedCode);
     });
+
+    test('should be case-insensitive during deobfuscation', () => {
+        const mapping = {
+            'Var_1': 'myVariable',
+            'Class_1': 'MyClass'
+        };
+        const aiOutput = 'public class CLASS_1 { private String VAR_1; }';
+        const result = deobfuscate(aiOutput, mapping);
+        expect(result).toContain('public class MyClass');
+        expect(result).toContain('private String myVariable');
+    });
 });
 
 describe('Reported Bugs Reproduction', () => {
@@ -138,15 +149,12 @@ public class Test {
 }
 `;
         const result = obfuscate(code);
-        // Debugging the result if it fails again
-        // console.log("OBFUSCATED CODE:\n", result.obfuscatedCode);
         expect(result.obfuscatedCode).toContain('import static org.apache.commons.lang.StringUtils.defaultString;');
         expect(result.obfuscatedCode).toContain('import java.math.BigDecimal;');
         expect(result.obfuscatedCode).not.toContain('import pf.gov.si.Internal;');
-        // expect(result.obfuscatedCode).toContain('import Var_1.Var_2.Var_3.Class_1;');
     });
 
-    test('should only obfuscate packages and imports starting with pf.gov', () => {
+    test('should obfuscate all packages and classes by default', () => {
         const code = `
 package com.external;
 import org.apache.commons.ListUtils;
@@ -157,9 +165,9 @@ public class External {
 }
 `;
         const result = obfuscate(code);
-        expect(result.obfuscatedCode).toContain('package com.external;');
+        // com is safe, external is NOT
+        expect(result.obfuscatedCode).toContain('package com.Var_');
         expect(result.obfuscatedCode).toContain('import org.apache.commons.ListUtils;');
-        // expect(result.obfuscatedCode).toContain('import Var_1.Var_2.Var_3.Class_1;');
     });
 
     test('should erase all comments on properties and methods', () => {
@@ -276,6 +284,25 @@ public class MyClass {}`;
         const result = obfuscate(code);
         expect(result.obfuscatedCode).toContain('.JAVA');
         expect(result.obfuscatedCode).not.toContain('Class_2'); // Should not obfuscate JAVA to Class_N
+    });
+});
+
+describe('Reported Bugs Restoration Tests', () => {
+    test('should obfuscate and restore standard package and class names', () => {
+        const code = `package com.example;
+public class MyClass {
+    private String name;
+}`;
+        const { obfuscatedCode, newMapping } = obfuscate(code);
+
+        // com should be preserved (in SAFE_IDENTIFIERS), example should be obfuscated
+        expect(obfuscatedCode).toContain('package com.Var_');
+        expect(obfuscatedCode).toContain('public class Class_');
+
+        const restored = deobfuscate(obfuscatedCode, newMapping);
+        expect(restored).toContain('package com.example;');
+        expect(restored).toContain('public class MyClass');
+        expect(restored).toContain('private String name;');
     });
 });
 
