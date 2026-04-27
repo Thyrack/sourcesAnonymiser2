@@ -112,19 +112,21 @@ document.addEventListener('DOMContentLoaded', () => {
         inputJava.style.borderColor = '';
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            handleJavaFiles(files);
+            handleFiles(files);
         }
     });
 
-    async function handleJavaFiles(files) {
+    async function handleFiles(files) {
         let combinedCode = inputJava.value;
         if (combinedCode && !combinedCode.endsWith('\n')) {
             combinedCode += '\n';
         }
 
         const fileArray = Array.from(files);
+        const supportedExtensions = ['.java', '.sql', '.js', '.ts'];
         for (const file of fileArray) {
-            if (file.name.toLowerCase().endsWith('.java')) {
+            const fileNameLower = file.name.toLowerCase();
+            if (supportedExtensions.some(ext => fileNameLower.endsWith(ext))) {
                 const text = await file.text();
                 combinedCode += `\n// --- FILE: ${file.name} ---\n${text}\n`;
             }
@@ -139,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     inputLoadFiles.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
-            handleJavaFiles(e.target.files);
+            handleFiles(e.target.files);
         }
         inputLoadFiles.value = '';
     });
