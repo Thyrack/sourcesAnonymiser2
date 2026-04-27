@@ -9,3 +9,7 @@
 ## 2026-04-23 - [O(N) Iterative String Reconstruction]
 **Learning:** Using `substring()` and string concatenation (`+`) inside a loop for iterative string replacements creates O(K*N) time complexity and excessive memory allocation (where K is string length and N is number of replacements). This creates severe performance issues with many replacements (e.g., 12 seconds vs 11 milliseconds for 50,000 replacements).
 **Action:** Use an array chunking approach: collect string segments and replacements in an array (`chunks.push(...)`) and use a single `chunks.join('')` at the end for an O(N) single-pass string reconstruction.
+
+## 2024-04-27 - [localStorage Bottleneck]
+**Learning:** Repeated synchronous reads and `JSON.parse()` of `localStorage` (like those triggered by large mapping dictionary lookups) block the main thread, causing severe performance degradation.
+**Action:** Implemented an in-memory caching layer using a module-level variable (`dictionaryCache`) with a `storage` event listener to invalidate the cache when it changes across tabs. This converts O(N) IO bound parsing into O(1) memory lookups.

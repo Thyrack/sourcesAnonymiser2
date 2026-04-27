@@ -2,23 +2,43 @@ export const APP_VERSION = "1.0.0";
 const STORAGE_KEY = "java_vault_mapping";
 const THEME_KEY = "java_vault_theme";
 
+// In-memory cache to prevent redundant localStorage reads and JSON.parse calls
+let dictionaryCache = null;
+
+// Invalidate cache if localStorage is modified from another tab/window
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === STORAGE_KEY) {
+      dictionaryCache = null;
+    }
+  });
+}
+
+
 /**
  * Charge le dictionnaire depuis le localStorage
  * @returns {Object} Le dictionnaire contenant la version et le mapping
  */
 export function loadDictionary() {
+  if (dictionaryCache !== null) {
+    return dictionaryCache;
+  }
+
   const data = localStorage.getItem(STORAGE_KEY);
   if (data) {
     try {
       const parsed = JSON.parse(data);
       if (parsed.version === APP_VERSION && parsed.mapping) {
+        dictionaryCache = parsed.mapping;
         return parsed.mapping;
       }
     } catch (e) {
       console.error("Erreur lors de la lecture du dictionnaire dans le localStorage", e);
     }
   }
-  return {};
+
+  dictionaryCache = {};
+  return dictionaryCache;
 }
 
 /**
@@ -31,6 +51,7 @@ export function saveDictionary(mapping) {
     mapping: mapping
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  dictionaryCache = mapping; // Update cache on save
 }
 
 /**
@@ -49,6 +70,7 @@ export function mergeDictionary(newEntries) {
  */
 export function clearDictionary() {
   localStorage.removeItem(STORAGE_KEY);
+  dictionaryCache = null; // Clear cache
 }
 
 /**
