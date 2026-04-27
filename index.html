@@ -274,7 +274,10 @@
     <div>
       <strong>Entrées en dictionnaire :</strong> <span id="entry-count">0</span>
     </div>
-    <div style="display: flex; gap: 10px;">
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button class="secondary" id="btn-export" aria-label="Exporter le dictionnaire vers un fichier JSON" disabled>📤 Exporter</button>
+      <button class="secondary" id="btn-import" aria-label="Importer un dictionnaire depuis un fichier JSON">📥 Importer</button>
+      <input type="file" id="input-import-file" accept=".json" style="display: none;">
       <button class="secondary" id="btn-view-dictionary" aria-label="Afficher le dictionnaire de correspondance" disabled>📖 Voir le dictionnaire</button>
       <button class="danger" id="btn-reset" aria-label="Vider le dictionnaire de la session courante" disabled>Vider le dictionnaire (Reset de session)</button>
     </div>

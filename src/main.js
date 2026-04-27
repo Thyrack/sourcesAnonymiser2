@@ -5,7 +5,9 @@ import {
     clearDictionary,
     getDictionaryCount,
     getTheme,
-    saveTheme
+    saveTheme,
+    getFullStorageData,
+    validateAndImportData
 } from './storage.js';
 import { obfuscate, deobfuscate } from './obfuscator.js';
 
@@ -14,6 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const versionDisplay = document.getElementById('version-display');
     const entryCountDisplay = document.getElementById('entry-count');
     const btnViewDictionary = document.getElementById('btn-view-dictionary');
+    const btnExport = document.getElementById('btn-export');
+    const btnImport = document.getElementById('btn-import');
+    const inputImportFile = document.getElementById('input-import-file');
     const btnReset = document.getElementById('btn-reset');
     const btnThemeToggle = document.getElementById('btn-theme-toggle');
 
@@ -47,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         entryCountDisplay.textContent = count;
         btnReset.disabled = count === 0;
         btnViewDictionary.disabled = count === 0;
+        btnExport.disabled = count === 0;
         if (count === 0) {
             dictionarySection.style.display = 'none';
         }
@@ -176,6 +182,55 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('light-mode');
         }
     }
+
+    // Export Action
+    btnExport.addEventListener('click', () => {
+        const data = getFullStorageData();
+        if (!data) return;
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'java-vault-dictionary.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // Import Action
+    btnImport.addEventListener('click', () => {
+        inputImportFile.click();
+    });
+
+    inputImportFile.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (validateAndImportData(data)) {
+                    updateCounter();
+                    updateCopyButtonStates();
+                    if (dictionarySection.style.display === 'block') {
+                        renderDictionary();
+                    }
+                    alert("Dictionnaire importé avec succès !");
+                } else {
+                    alert("Fichier de dictionnaire invalide ou version incompatible.");
+                }
+            } catch (err) {
+                console.error("Erreur lors de l'import :", err);
+                alert("Erreur lors de la lecture du fichier JSON.");
+            }
+            // Reset input to allow re-importing the same file
+            inputImportFile.value = '';
+        };
+        reader.readAsText(file);
+    });
 
     // Reset Action
     btnReset.addEventListener('click', () => {

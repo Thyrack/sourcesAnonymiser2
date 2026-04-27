@@ -52,6 +52,28 @@ export function clearDictionary() {
 }
 
 /**
+ * Récupère les données complètes pour l'export
+ * @returns {Object|null}
+ */
+export function getFullStorageData() {
+  const data = localStorage.getItem(STORAGE_KEY);
+  return data ? JSON.parse(data) : null;
+}
+
+/**
+ * Valide et importe les données d'un dictionnaire
+ * @param {Object} data
+ * @returns {boolean} true si l'import a réussi
+ */
+export function validateAndImportData(data) {
+  if (data && data.version === APP_VERSION && typeof data.mapping === 'object' && data.mapping !== null) {
+    saveDictionary(data.mapping);
+    return true;
+  }
+  return false;
+}
+
+/**
  * Récupère le nombre d'entrées
  */
 export function getDictionaryCount() {
