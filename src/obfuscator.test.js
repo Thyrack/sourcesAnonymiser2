@@ -233,21 +233,48 @@ class B {
         expect(occurrences).toBe(2);
     });
 
-    test('should obfuscate multiple units with explicit separators', () => {
-        const multiUnitCode = `// --- FILE: A.java ---
+    test('should obfuscate multiple units with explicit separators and obfuscate identifiers in separators', () => {
+        const multiUnitCode = `// --- FILE: MyClassA.java ---
 package a;
-class A {
-    void callB(B b) {}
+class MyClassA {
+    void callB(MyClassB b) {}
 }
-// --- FILE: B.java ---
+// --- FILE: MyClassB.java ---
 package b;
-class B {}
+class MyClassB {}
 `;
         const result = obfuscate(multiUnitCode);
         // console.log("OBFUSCATED CODE:\n", result.obfuscatedCode);
-        // They are being obfuscated because they are recognized as classes (starting with uppercase)
-        expect(result.obfuscatedCode).toContain('class Class_');
-        expect(result.obfuscatedCode).toContain('// --- FILE: A.java ---');
-        expect(result.obfuscatedCode).toContain('// --- FILE: B.java ---');
+
+        // Identifiers in separators should be obfuscated
+        expect(result.obfuscatedCode).not.toContain('MyClassA.java');
+        expect(result.obfuscatedCode).not.toContain('MyClassB.java');
+
+        // Check if Class_1 and Class_2 are used consistently in both separators and code
+        const mapping = result.newMapping;
+        const idA = Object.keys(mapping).find(k => mapping[k] === 'MyClassA');
+        const idB = Object.keys(mapping).find(k => mapping[k] === 'MyClassB');
+
+        expect(idA).toBeDefined();
+        expect(idB).toBeDefined();
+
+        expect(result.obfuscatedCode).toContain(`// --- FILE: ${idA}.java ---`);
+        expect(result.obfuscatedCode).toContain(`// --- FILE: ${idB}.java ---`);
+    });
+
+    test('should obfuscate identifiers in separators even if they are not in the code', () => {
+        const code = `// --- FILE: SomeFileName.java ---
+public class A {}`;
+        const result = obfuscate(code);
+        expect(result.obfuscatedCode).not.toContain('SomeFileName');
+        expect(result.obfuscatedCode).toMatch(/\/\/ --- FILE: (Class|Var)_\d+\.java ---/);
+    });
+
+    test('should preserve file extension in separators even if uppercase', () => {
+        const code = `// --- FILE: MyClass.JAVA ---
+public class MyClass {}`;
+        const result = obfuscate(code);
+        expect(result.obfuscatedCode).toContain('.JAVA');
+        expect(result.obfuscatedCode).not.toContain('Class_2'); // Should not obfuscate JAVA to Class_N
     });
 });

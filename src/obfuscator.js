@@ -209,7 +209,7 @@ function obfuscateUnit(code, currentMapping, counters) {
   const nodesToReplace = [];
 
   // Identify nodes that are comments to preserve file separators if they are comments
-  const fileSeparatorRegex = /^\/\/\s*---\s*FILE:\s*.*?\s*---\s*$/;
+  const fileSeparatorRegex = /^\/\/\s*---\s*FILE:\s*(.*?)\s*---\s*$/;
 
   traverse(ast, (node, path) => {
     if (node.tokenType && node.tokenType.name === 'StringLiteral') {
@@ -251,9 +251,17 @@ function obfuscateUnit(code, currentMapping, counters) {
 
   const comments = getComments(code);
   for (const c of comments) {
-      const commentText = code.substring(c.startOffset, c.endOffset + 1).trim();
-      if (fileSeparatorRegex.test(commentText)) {
-          // Keep file separators
+      const commentText = code.substring(c.startOffset, c.endOffset + 1);
+      const match = commentText.match(fileSeparatorRegex);
+      if (match) {
+          // Keep file separators but mark for identifier replacement
+          nodesToReplace.push({
+              type: 'FILE_SEP',
+              startOffset: c.startOffset,
+              endOffset: c.endOffset,
+              value: commentText,
+              filename: match[1]
+          });
           continue;
       }
       nodesToReplace.push({ type: 'COMMENT', startOffset: c.startOffset, endOffset: c.endOffset, value: '' });
@@ -273,6 +281,39 @@ function obfuscateUnit(code, currentMapping, counters) {
   for (const n of nodesToReplace) {
       if (n.type === 'COMMENT') {
           finalReplacements.push({ startOffset: n.startOffset, endOffset: n.endOffset, newText: '' });
+          continue;
+      }
+
+      if (n.type === 'FILE_SEP') {
+          const lastDotIndex = n.filename.lastIndexOf('.');
+          let baseName = n.filename;
+          let extension = '';
+          if (lastDotIndex !== -1) {
+              baseName = n.filename.substring(0, lastDotIndex);
+              extension = n.filename.substring(lastDotIndex);
+          }
+
+          const obfuscatedBaseName = baseName.replace(/[a-zA-Z_$][a-zA-Z\d_$]*/g, (idToken) => {
+              if (SAFE_IDENTIFIERS.has(idToken)) return idToken;
+
+              const existingKeyGlobal = reverseMapping.get(idToken);
+              if (existingKeyGlobal) return existingKeyGlobal;
+              if (localValueToId[idToken]) return localValueToId[idToken];
+
+              // Guess type based on naming convention
+              let type = (declaredClasses.has(idToken) || isClassName(idToken) || isConstant(idToken)) ? 'CLASS' : 'VAR';
+              let prefix = type === 'CLASS' ? 'Class' : 'Var';
+
+              counters[prefix]++;
+              const id = `${prefix}_${counters[prefix]}`;
+              localValueToId[idToken] = id;
+              newMappingForUnit[id] = idToken;
+              currentMapping[id] = idToken;
+              reverseMapping.set(idToken, id);
+              return id;
+          });
+          const newText = n.value.replace(n.filename, obfuscatedBaseName + extension);
+          finalReplacements.push({ startOffset: n.startOffset, endOffset: n.endOffset, newText: newText });
           continue;
       }
 
