@@ -13,17 +13,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
     const versionDisplay = document.getElementById('version-display');
     const entryCountDisplay = document.getElementById('entry-count');
+    const btnViewDictionary = document.getElementById('btn-view-dictionary');
     const btnReset = document.getElementById('btn-reset');
     const btnThemeToggle = document.getElementById('btn-theme-toggle');
+
+    const dictionarySection = document.getElementById('dictionary-section');
+    const dictionaryTableBody = document.querySelector('#dictionary-table tbody');
+    const btnCloseDictionary = document.getElementById('btn-close-dictionary');
 
     const inputJava = document.getElementById('input-java');
     const btnObfuscate = document.getElementById('btn-obfuscate');
     const outputObfuscated = document.getElementById('output-obfuscated');
+    const btnCopyObfuscated = document.getElementById('btn-copy-obfuscated');
     const obfuscateError = document.getElementById('obfuscate-error');
 
     const inputAi = document.getElementById('input-ai');
     const btnRestore = document.getElementById('btn-restore');
     const outputRestored = document.getElementById('output-restored');
+    const btnCopyRestored = document.getElementById('btn-copy-restored');
 
     // Initialize
     versionDisplay.textContent = `v${APP_VERSION}`;
@@ -33,11 +40,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize button states based on potential browser auto-fill
     btnObfuscate.disabled = inputJava.value.trim().length === 0;
     btnRestore.disabled = inputAi.value.trim().length === 0;
+    updateCopyButtonStates();
 
     function updateCounter() {
         const count = getDictionaryCount();
         entryCountDisplay.textContent = count;
         btnReset.disabled = count === 0;
+        btnViewDictionary.disabled = count === 0;
+        if (count === 0) {
+            dictionarySection.style.display = 'none';
+        }
     }
 
     function showError(msg) {
@@ -59,6 +71,46 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRestore.disabled = inputAi.value.trim().length === 0;
     });
 
+    function renderDictionary() {
+        const mapping = loadDictionary();
+        dictionaryTableBody.innerHTML = '';
+
+        const keys = Object.keys(mapping).sort();
+        for (const key of keys) {
+            const row = document.createElement('tr');
+            const idCell = document.createElement('td');
+            idCell.innerHTML = `<code>${key}</code>`;
+            const valueCell = document.createElement('td');
+            valueCell.textContent = mapping[key];
+            row.appendChild(idCell);
+            row.appendChild(valueCell);
+            dictionaryTableBody.appendChild(row);
+        }
+    }
+
+    function updateCopyButtonStates() {
+        btnCopyObfuscated.disabled = outputObfuscated.value.trim().length === 0;
+        btnCopyRestored.disabled = outputRestored.value.trim().length === 0;
+    }
+
+    async function handleCopy(textarea, button) {
+        const text = textarea.value;
+        if (!text) return;
+
+        try {
+            await navigator.clipboard.writeText(text);
+            const originalText = button.textContent;
+            button.textContent = '✅ Copié !';
+            button.classList.add('success');
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('success');
+            }, 2000);
+        } catch (err) {
+            console.error('Erreur lors de la copie :', err);
+        }
+    }
+
     // Obfuscate Action
     btnObfuscate.addEventListener('click', () => {
         hideError();
@@ -72,8 +124,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mettre à jour le dictionnaire
             mergeDictionary(newMapping);
             updateCounter();
+            if (dictionarySection.style.display === 'block') {
+                renderDictionary();
+            }
 
             outputObfuscated.value = obfuscatedCode;
+            updateCopyButtonStates();
         } catch (err) {
             showError(err.message);
         }
@@ -88,7 +144,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const restoredText = deobfuscate(aiText, currentMapping);
 
         outputRestored.value = restoredText;
+        updateCopyButtonStates();
     });
+
+    // Dictionary Display Actions
+    btnViewDictionary.addEventListener('click', () => {
+        renderDictionary();
+        dictionarySection.style.display = 'block';
+        dictionarySection.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    btnCloseDictionary.addEventListener('click', () => {
+        dictionarySection.style.display = 'none';
+    });
+
+    // Copy Actions
+    btnCopyObfuscated.addEventListener('click', () => handleCopy(outputObfuscated, btnCopyObfuscated));
+    btnCopyRestored.addEventListener('click', () => handleCopy(outputRestored, btnCopyRestored));
 
     // Theme Toggle
     btnThemeToggle.addEventListener('click', () => {
@@ -115,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
             inputAi.value = '';
             outputRestored.value = '';
             hideError();
+            updateCopyButtonStates();
 
             // Reset button states
             btnObfuscate.disabled = true;

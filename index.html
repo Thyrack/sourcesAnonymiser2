@@ -153,8 +153,23 @@
     button.danger:hover:not(:disabled) {
       background-color: var(--danger-hover);
     }
+    button.success {
+      background-color: var(--success-color);
+    }
+    button.success:hover:not(:disabled) {
+      background-color: var(--success-color);
+      opacity: 0.9;
+    }
     button.danger:focus-visible {
       box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--danger-color);
+    }
+    button.secondary {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      border: 1px solid var(--border-color);
+    }
+    button.secondary:hover:not(:disabled) {
+      background-color: var(--input-bg);
     }
     .control-panel {
       width: 90%;
@@ -167,12 +182,67 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     .error-msg {
       color: var(--danger-color);
       font-weight: bold;
       margin-bottom: 10px;
       display: none;
+    }
+    .output-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .btn-copy {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      font-size: 0.85rem;
+      z-index: 10;
+    }
+    .dictionary-section {
+      width: 90%;
+      max-width: 1200px;
+      margin-bottom: 20px;
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      display: none;
+    }
+    .dictionary-table-wrapper {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    th {
+      background-color: var(--input-bg);
+      position: sticky;
+      top: 0;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    code {
+      font-family: "Courier New", Courier, monospace;
+      background-color: var(--input-bg);
+      padding: 2px 4px;
+      border-radius: 3px;
     }
     #btn-theme-toggle {
       background: transparent;
@@ -204,7 +274,30 @@
     <div>
       <strong>Entrées en dictionnaire :</strong> <span id="entry-count">0</span>
     </div>
-    <button class="danger" id="btn-reset" aria-label="Vider le dictionnaire de la session courante" disabled>Vider le dictionnaire (Reset de session)</button>
+    <div style="display: flex; gap: 10px;">
+      <button class="secondary" id="btn-view-dictionary" aria-label="Afficher le dictionnaire de correspondance" disabled>📖 Voir le dictionnaire</button>
+      <button class="danger" id="btn-reset" aria-label="Vider le dictionnaire de la session courante" disabled>Vider le dictionnaire (Reset de session)</button>
+    </div>
+  </div>
+
+  <div id="dictionary-section" class="dictionary-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+      <h2 style="margin: 0;">Dictionnaire de correspondance</h2>
+      <button class="secondary" id="btn-close-dictionary" style="margin-bottom: 0;">Fermer</button>
+    </div>
+    <div class="dictionary-table-wrapper">
+      <table id="dictionary-table">
+        <thead>
+          <tr>
+            <th>Identifiant</th>
+            <th>Valeur Originale</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Rempli dynamiquement -->
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <div class="container">
@@ -213,14 +306,20 @@
       <div id="obfuscate-error" class="error-msg" aria-live="polite"></div>
       <textarea id="input-java" placeholder="Collez le code Java original ici" aria-label="Code Java original"></textarea>
       <button id="btn-obfuscate" aria-label="Offusquer le code Java" disabled>🔒 Offusquer</button>
-      <textarea id="output-obfuscated" readonly placeholder="Code offusqué à copier pour l'IA" aria-label="Code offusqué généré"></textarea>
+      <div class="output-container">
+        <button id="btn-copy-obfuscated" class="btn-copy" disabled aria-label="Copier le code offusqué">Copier</button>
+        <textarea id="output-obfuscated" readonly placeholder="Code offusqué à copier pour l'IA" aria-label="Code offusqué généré"></textarea>
+      </div>
     </div>
 
     <div class="section">
       <h2>Restauration (Retour)</h2>
       <textarea id="input-ai" placeholder="Collez la réponse de l'IA ici" aria-label="Réponse de l'IA contenant le code offusqué"></textarea>
       <button id="btn-restore" aria-label="Restaurer le code original" disabled>🔓 Restaurer le code</button>
-      <textarea id="output-restored" readonly placeholder="Réponse restaurée" aria-label="Code restauré"></textarea>
+      <div class="output-container">
+        <button id="btn-copy-restored" class="btn-copy" disabled aria-label="Copier le code restauré">Copier</button>
+        <textarea id="output-restored" readonly placeholder="Réponse restaurée" aria-label="Code restauré"></textarea>
+      </div>
     </div>
   </div>
 
