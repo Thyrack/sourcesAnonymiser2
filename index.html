@@ -275,6 +275,8 @@
       <strong>Entrées en dictionnaire :</strong> <span id="entry-count">0</span>
     </div>
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button class="secondary" id="btn-load-files" aria-label="Charger des fichiers Java">📁 Charger des fichiers</button>
+      <input type="file" id="input-load-files" accept=".java" multiple style="display: none;">
       <button class="secondary" id="btn-export" aria-label="Exporter le dictionnaire vers un fichier JSON" disabled>📤 Exporter</button>
       <button class="secondary" id="btn-import" aria-label="Importer un dictionnaire depuis un fichier JSON">📥 Importer</button>
       <input type="file" id="input-import-file" accept=".json" style="display: none;">

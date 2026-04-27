@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
     const versionDisplay = document.getElementById('version-display');
     const entryCountDisplay = document.getElementById('entry-count');
+    const btnLoadFiles = document.getElementById('btn-load-files');
+    const inputLoadFiles = document.getElementById('input-load-files');
     const btnViewDictionary = document.getElementById('btn-view-dictionary');
     const btnExport = document.getElementById('btn-export');
     const btnImport = document.getElementById('btn-import');
@@ -75,6 +77,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     inputAi.addEventListener('input', () => {
         btnRestore.disabled = inputAi.value.trim().length === 0;
+    });
+
+    // Drag and Drop
+    inputJava.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        inputJava.style.borderColor = 'var(--primary-color)';
+    });
+
+    inputJava.addEventListener('dragleave', () => {
+        inputJava.style.borderColor = '';
+    });
+
+    inputJava.addEventListener('drop', (e) => {
+        e.preventDefault();
+        inputJava.style.borderColor = '';
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleJavaFiles(files);
+        }
+    });
+
+    async function handleJavaFiles(files) {
+        let combinedCode = inputJava.value;
+        if (combinedCode && !combinedCode.endsWith('\n')) {
+            combinedCode += '\n';
+        }
+
+        for (const file of files) {
+            if (file.name.endsWith('.java')) {
+                const text = await file.text();
+                combinedCode += `\n// --- FILE: ${file.name} ---\n${text}\n`;
+            }
+        }
+        inputJava.value = combinedCode;
+        btnObfuscate.disabled = inputJava.value.trim().length === 0;
+    }
+
+    btnLoadFiles.addEventListener('click', () => {
+        inputLoadFiles.click();
+    });
+
+    inputLoadFiles.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleJavaFiles(e.target.files);
+        }
+        inputLoadFiles.value = '';
     });
 
     function renderDictionary() {
