@@ -25,8 +25,6 @@ const SAFE_STRINGS = new Set([
  */
 function getComments(text) {
   const comments = [];
-  let inLineComment = false;
-  let inBlockComment = false;
   let inString = false;
   let inChar = false;
 
@@ -42,34 +40,17 @@ function getComments(text) {
       continue;
     }
 
-    if (inLineComment) {
-      if (text[i] === '\n') {
-        inLineComment = false;
-      }
-      continue;
-    }
-
-    if (inBlockComment) {
-      if (text[i] === '*' && text[i+1] === '/') {
-        inBlockComment = false;
-        i++;
-      }
-      continue;
-    }
-
     if (text[i] === '"') {
       inString = true;
     } else if (text[i] === "'") {
       inChar = true;
     } else if (text[i] === '/' && text[i+1] === '/') {
-      inLineComment = true;
       const startOffset = i;
       let j = i + 2;
       while(j < text.length && text[j] !== '\n') j++;
       comments.push({ startOffset: startOffset, endOffset: j - 1 });
       i = j - 1;
     } else if (text[i] === '/' && text[i+1] === '*') {
-      inBlockComment = true;
       const startOffset = i;
       let j = i + 2;
       while(j < text.length - 1 && !(text[j] === '*' && text[j+1] === '/')) j++;
@@ -85,14 +66,15 @@ function getComments(text) {
   return comments;
 }
 
-function traverse(node, cb) {
+function traverse(node, cb, path = []) {
   if (Array.isArray(node)) {
-    node.forEach(child => traverse(child, cb));
+    node.forEach(child => traverse(child, cb, path));
   } else if (node && typeof node === 'object') {
-    cb(node);
+    const newPath = node.name ? [...path, node.name] : path;
+    cb(node, newPath);
     if (node.children) {
       for (const key in node.children) {
-        traverse(node.children[key], cb);
+        traverse(node.children[key], cb, newPath);
       }
     }
   }
@@ -127,14 +109,59 @@ export function obfuscate(code, currentMapping = {}) {
   const declaredClasses = new Set();
   const declaredMethods = new Set();
 
-  // 1. Déterminer isHighSecurity
-  traverse(ast, node => {
+  const tokensToSkip = new Set(); // Set of "startOffset|image"
+
+  // 1. Déterminer isHighSecurity et identifier les tokens à ignorer (imports/packages/annotations externes)
+  traverse(ast, (node) => {
     if (node.name === 'packageDeclaration') {
-      if (node.children.Identifier) {
-         const pkgName = node.children.Identifier.map(id => id.image).join('.');
-         if (pkgName.startsWith('pf.gov')) {
-             isHighSecurity = true;
-         }
+      const ids = [];
+      traverse(node, (n) => {
+        if (n.tokenType && n.tokenType.name === 'Identifier') ids.push(n);
+      });
+      const pkgName = ids.map(id => id.image).join('.');
+      if (pkgName.startsWith('pf.gov')) {
+          isHighSecurity = true;
+      } else {
+          ids.forEach(id => tokensToSkip.add(`${id.startOffset}|${id.image}`));
+      }
+    }
+
+    if (node.name === 'importDeclaration') {
+      const actualIds = [];
+      traverse(node, (n) => {
+          if (n.tokenType && n.tokenType.name === 'Identifier') actualIds.push(n);
+      });
+
+      const importName = actualIds.map(id => id.image).join('.');
+      if (!importName.startsWith('pf.gov.')) {
+          actualIds.forEach(id => tokensToSkip.add(`${id.startOffset}|${id.image}`));
+      }
+    }
+
+    if (node.name === 'annotation') {
+      const actualIds = [];
+      // Use a custom traverse to avoid double counting or getting the same tokens
+      const findIds = (n) => {
+        if (Array.isArray(n)) {
+          n.forEach(findIds);
+        } else if (n && typeof n === 'object') {
+          if (n.tokenType && n.tokenType.name === 'Identifier') {
+            actualIds.push(n);
+          }
+          if (n.children) {
+            for (const key in n.children) {
+              findIds(n.children[key]);
+            }
+          }
+        }
+      };
+      findIds(node);
+
+      const annotName = actualIds.map(id => id.image).join('.');
+      if (!annotName.startsWith('pf.gov.')) {
+          actualIds.forEach(id => {
+              tokensToSkip.add(`${id.startOffset}|${id.image}`);
+          });
       }
     }
   });
@@ -176,7 +203,7 @@ export function obfuscate(code, currentMapping = {}) {
   const nodesToReplace = []; // { type: string, startOffset: number, endOffset: number, value: string }
 
   // 3. Extraire tous les usages et chaînes de caractères
-  traverse(ast, node => {
+  traverse(ast, (node, path) => {
     if (node.tokenType && node.tokenType.name === 'StringLiteral') {
         const val = node.image.substring(1, node.image.length - 1);
         if (isHighSecurity) {
@@ -187,10 +214,17 @@ export function obfuscate(code, currentMapping = {}) {
             nodesToReplace.push({ type: 'STR', startOffset: node.startOffset, endOffset: node.endOffset, value: node.image });
         }
     } else if (node.tokenType && node.tokenType.name === 'Identifier') {
+        if (tokensToSkip.has(`${node.startOffset}|${node.image}`)) return;
+
+        let forceObfuscate = false;
+        if (path.includes('annotation')) {
+             forceObfuscate = true;
+        }
+
         const val = node.image;
         if (SAFE_IDENTIFIERS.has(val)) return;
 
-        if (isHighSecurity) {
+        if (isHighSecurity || forceObfuscate) {
             let type = 'VAR';
             if (declaredClasses.has(val) || isClassName(val) || isConstant(val)) {
                 type = 'CLASS';
