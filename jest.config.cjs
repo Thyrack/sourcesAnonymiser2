@@ -7,4 +7,8 @@ module.exports = {
     '^.+\\.(js|jsx)$': 'babel-jest', 
   },
   testMatch: ["**/?(*.)+(spec|test).js"],
+  moduleNameMapper: {
+    '^src/(.*)$': '<rootDir>/src/$1'
+  },
+  moduleDirectories: ['node_modules'],
 };
