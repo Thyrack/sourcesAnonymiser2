@@ -104,8 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
             combinedCode += '\n';
         }
 
-        for (const file of files) {
-            if (file.name.endsWith('.java')) {
+        const fileArray = Array.from(files);
+        for (const file of fileArray) {
+            if (file.name.toLowerCase().endsWith('.java')) {
                 const text = await file.text();
                 combinedCode += `\n// --- FILE: ${file.name} ---\n${text}\n`;
             }
