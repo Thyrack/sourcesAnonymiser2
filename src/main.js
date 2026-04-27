@@ -75,8 +75,26 @@ document.addEventListener('DOMContentLoaded', () => {
         btnObfuscate.disabled = inputJava.value.trim().length === 0;
     });
 
+    inputJava.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            if (!btnObfuscate.disabled) {
+                btnObfuscate.click();
+            }
+        }
+    });
+
     inputAi.addEventListener('input', () => {
         btnRestore.disabled = inputAi.value.trim().length === 0;
+    });
+
+    inputAi.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            if (!btnRestore.disabled) {
+                btnRestore.click();
+            }
+        }
     });
 
     // Drag and Drop
@@ -185,6 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             outputObfuscated.value = obfuscatedCode;
             updateCopyButtonStates();
+
+            // Move focus to copy button for quick access
+            btnCopyObfuscated.focus();
         } catch (err) {
             showError(err.message);
         }
@@ -200,6 +221,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         outputRestored.value = restoredText;
         updateCopyButtonStates();
+
+        // Move focus to copy button for quick access
+        btnCopyRestored.focus();
     });
 
     // Dictionary Display Actions
