@@ -1,5 +1,25 @@
 import { parse } from 'java-parser';
 
+const SAFE_IDENTIFIERS = new Set([
+  'java', 'javax', 'org', 'com', 'sun', 'net',
+  'apache', 'commons', 'collections', 'lang', 'util',
+  'String', 'Integer', 'Long', 'Double', 'Float', 'Boolean', 'Character', 'Byte', 'Short', 'Void',
+  'Object', 'List', 'ArrayList', 'Map', 'HashMap', 'Set', 'HashSet', 'Collection',
+  'System', 'out', 'println', 'print', 'err',
+  'StringBuilder', 'StringBuffer', 'Exception', 'RuntimeException', 'Throwable',
+  'ListUtils', 'StringUtils', 'EMPTY', 'EMPTY_LIST', 'ArrayList',
+  'add', 'isEmpty', 'get', 'set', 'size', 'contains', 'remove', 'clear', 'put', 'values', 'keySet', 'entrySet',
+  'append', 'toString', 'substring', 'length', 'equals', 'hashCode', 'valueOf', 'parseInt', 'parseLong',
+  'removeEnd', 'format', 'split', 'join', 'replace', 'replaceAll', 'trim', 'toLowerCase', 'toUpperCase',
+  'override', 'SuppressWarnings', 'unchecked', 'serial',
+  'main', 'args', 'final', 'static', 'public', 'private', 'protected', 'abstract', 'class', 'interface', 'enum',
+  'void', 'int', 'long', 'double', 'float', 'boolean', 'char', 'byte', 'short'
+]);
+
+const SAFE_STRINGS = new Set([
+  'unchecked', 'serial', 'unused', 'rawtypes', 'deprecation'
+]);
+
 /**
  * Extrait manuellement les commentaires (ligne et bloc) en gérant les chaînes de caractères
  */
@@ -78,6 +98,14 @@ function traverse(node, cb) {
   }
 }
 
+function isConstant(name) {
+    return name.length > 1 && name === name.toUpperCase() && /^[A-Z][A-Z0-9_]*$/.test(name);
+}
+
+function isClassName(name) {
+    return /^[A-Z][a-zA-Z0-9]*$/.test(name) && !isConstant(name);
+}
+
 /**
  * Offusque le code Java donné
  * @param {string} code Le code source Java original
@@ -118,31 +146,30 @@ export function obfuscate(code, currentMapping = {}) {
          declaredVars.add(node.children.Identifier[0].image);
       }
     }
-    if (isHighSecurity) {
-      if (node.name === 'classDeclaration') {
-         if (node.children && node.children.normalClassDeclaration && node.children.normalClassDeclaration[0]) {
-            const normal = node.children.normalClassDeclaration[0];
-            if (normal.children.typeIdentifier && normal.children.typeIdentifier[0] && normal.children.typeIdentifier[0].children.Identifier && normal.children.typeIdentifier[0].children.Identifier[0]) {
-               declaredClasses.add(normal.children.typeIdentifier[0].children.Identifier[0].image);
+
+    if (node.name === 'classDeclaration') {
+        if (node.children && node.children.normalClassDeclaration && node.children.normalClassDeclaration[0]) {
+           const normal = node.children.normalClassDeclaration[0];
+           if (normal.children.typeIdentifier && normal.children.typeIdentifier[0] && normal.children.typeIdentifier[0].children.Identifier && normal.children.typeIdentifier[0].children.Identifier[0]) {
+              declaredClasses.add(normal.children.typeIdentifier[0].children.Identifier[0].image);
+           }
+        }
+    }
+    if (node.name === 'interfaceDeclaration') {
+        if (node.children && node.children.normalInterfaceDeclaration && node.children.normalInterfaceDeclaration[0]) {
+           const normal = node.children.normalInterfaceDeclaration[0];
+           if (normal.children.typeIdentifier && normal.children.typeIdentifier[0] && normal.children.typeIdentifier[0].children.Identifier && normal.children.typeIdentifier[0].children.Identifier[0]) {
+              declaredClasses.add(normal.children.typeIdentifier[0].children.Identifier[0].image);
+           }
+        }
+    }
+    if (node.name === 'methodDeclaration') {
+        if (node.children && node.children.methodHeader && node.children.methodHeader[0] && node.children.methodHeader[0].children.methodDeclarator && node.children.methodHeader[0].children.methodDeclarator[0]) {
+            const decl = node.children.methodHeader[0].children.methodDeclarator[0];
+            if (decl.children.Identifier && decl.children.Identifier[0]) {
+                declaredMethods.add(decl.children.Identifier[0].image);
             }
-         }
-      }
-      if (node.name === 'interfaceDeclaration') {
-         if (node.children && node.children.normalInterfaceDeclaration && node.children.normalInterfaceDeclaration[0]) {
-            const normal = node.children.normalInterfaceDeclaration[0];
-            if (normal.children.typeIdentifier && normal.children.typeIdentifier[0] && normal.children.typeIdentifier[0].children.Identifier && normal.children.typeIdentifier[0].children.Identifier[0]) {
-               declaredClasses.add(normal.children.typeIdentifier[0].children.Identifier[0].image);
-            }
-         }
-      }
-      if (node.name === 'methodDeclaration') {
-         if (node.children && node.children.methodHeader && node.children.methodHeader[0] && node.children.methodHeader[0].children.methodDeclarator && node.children.methodHeader[0].children.methodDeclarator[0]) {
-             const decl = node.children.methodHeader[0].children.methodDeclarator[0];
-             if (decl.children.Identifier && decl.children.Identifier[0]) {
-                 declaredMethods.add(decl.children.Identifier[0].image);
-             }
-         }
-      }
+        }
     }
   });
 
@@ -151,15 +178,31 @@ export function obfuscate(code, currentMapping = {}) {
   // 3. Extraire tous les usages et chaînes de caractères
   traverse(ast, node => {
     if (node.tokenType && node.tokenType.name === 'StringLiteral') {
-        nodesToReplace.push({ type: 'STR', startOffset: node.startOffset, endOffset: node.endOffset, value: node.image });
+        const val = node.image.substring(1, node.image.length - 1);
+        if (isHighSecurity) {
+            if (!SAFE_STRINGS.has(val)) {
+                nodesToReplace.push({ type: 'STR', startOffset: node.startOffset, endOffset: node.endOffset, value: node.image });
+            }
+        } else {
+            nodesToReplace.push({ type: 'STR', startOffset: node.startOffset, endOffset: node.endOffset, value: node.image });
+        }
     } else if (node.tokenType && node.tokenType.name === 'Identifier') {
         const val = node.image;
-        if (declaredVars.has(val)) {
-            nodesToReplace.push({ type: 'VAR', startOffset: node.startOffset, endOffset: node.endOffset, value: val });
-        } else if (declaredClasses.has(val)) {
-            nodesToReplace.push({ type: 'CLASS', startOffset: node.startOffset, endOffset: node.endOffset, value: val });
-        } else if (declaredMethods.has(val)) {
-            nodesToReplace.push({ type: 'METHOD', startOffset: node.startOffset, endOffset: node.endOffset, value: val });
+        if (SAFE_IDENTIFIERS.has(val)) return;
+
+        if (isHighSecurity) {
+            let type = 'VAR';
+            if (declaredClasses.has(val) || isClassName(val) || isConstant(val)) {
+                type = 'CLASS';
+            }
+            nodesToReplace.push({ type: type, startOffset: node.startOffset, endOffset: node.endOffset, value: val });
+        } else {
+            if (declaredVars.has(val)) {
+                nodesToReplace.push({ type: 'VAR', startOffset: node.startOffset, endOffset: node.endOffset, value: val });
+            } else if (declaredClasses.has(val) || declaredMethods.has(val)) {
+                const type = declaredClasses.has(val) ? 'CLASS' : 'VAR';
+                nodesToReplace.push({ type: type, startOffset: node.startOffset, endOffset: node.endOffset, value: val });
+            }
         }
     }
   });
@@ -172,19 +215,18 @@ export function obfuscate(code, currentMapping = {}) {
 
   // 5. Générer le mapping et préparer les remplacements
   const newMapping = {};
-  const localValueToId = {};
+  const localValueToId = Object.create(null);
 
-  const counters = { VAR: 0, STR: 0, CLASS: 0, METHOD: 0 };
+  const counters = { Var: 0, Class: 0, STR: 0 };
   const currentMappingKeys = Object.keys(currentMapping);
 
-  // Performance optimization: Avoid creating RegExp objects in a double loop
+  // Initialize counters from current mapping
   for (const key of currentMappingKeys) {
       const underIndex = key.indexOf('_');
       if (underIndex > 0) {
           const prefix = key.substring(0, underIndex);
           if (counters[prefix] !== undefined) {
               const countStr = key.substring(underIndex + 1);
-              // Basic check if it's a number to avoid matching invalid keys (though rare)
               if (/^\d+$/.test(countStr)) {
                   const count = parseInt(countStr, 10);
                   if (count > counters[prefix]) {
@@ -198,7 +240,6 @@ export function obfuscate(code, currentMapping = {}) {
   const finalReplacements = [];
 
   // Performance optimization: Pre-compute reverse mapping for O(1) lookups
-  // This avoids O(N*M) where N is nodesToReplace and M is Object.keys(currentMapping)
   const reverseMapping = new Map();
   for (const key of currentMappingKeys) {
       if (!reverseMapping.has(currentMapping[key])) {
@@ -221,8 +262,15 @@ export function obfuscate(code, currentMapping = {}) {
       } else if (localValueToId[n.value]) {
           id = localValueToId[n.value];
       } else {
-          counters[n.type]++;
-          id = `${n.type}_${counters[n.type]}`;
+          let prefix = 'Var';
+          if (n.type === 'CLASS' || n.type === 'CONSTANT') {
+              prefix = 'Class';
+          } else if (n.type === 'STR') {
+              prefix = 'STR';
+          }
+
+          counters[prefix]++;
+          id = `${prefix}_${counters[prefix]}`;
           localValueToId[n.value] = id;
           newMapping[id] = n.value;
       }
@@ -244,11 +292,8 @@ export function obfuscate(code, currentMapping = {}) {
   }
 
   // Appliquer les remplacements
-  // Performance optimization: Use array chunking for O(N) reconstruction instead of O(K*N) iterative substring replacements
   const chunks = [];
   let lastIndex = 0;
-  // resolvedReplacements is sorted by startOffset descending, so we iterate in reverse
-  // to process the string from left to right.
   for (let i = resolvedReplacements.length - 1; i >= 0; i--) {
       const rep = resolvedReplacements[i];
       chunks.push(code.substring(lastIndex, rep.startOffset));
@@ -275,8 +320,6 @@ export function deobfuscate(text, mapping) {
     if (keys.length === 0) return text;
 
     // Trier les clés par longueur décroissante
-    // Performance optimization: Single O(L) pass replacement instead of O(N*L)
-    // Avoids cascading replacements and reduces garbage collection
     keys.sort((a, b) => b.length - a.length);
     const escapedKeys = keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     const pattern = new RegExp(escapedKeys.join('|'), 'g');

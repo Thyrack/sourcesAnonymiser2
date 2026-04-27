@@ -17,7 +17,7 @@ public class SimpleApp {
         expect(result).toHaveProperty('obfuscatedCode');
         // Check if identifiable tokens have been replaced by IDs
         expect(result.obfuscatedCode).toContain('STR_1'); 
-        expect(result.obfuscatedCode).toContain('VAR_1'); 
+        expect(result.obfuscatedCode).toContain('Var_1');
     });
 
     // Test 2: Block and Line Comments Handling (Edge Case)
@@ -62,8 +62,28 @@ public class ComplexHandler {
         const result = obfuscate(complexCode);
 
         expect(result).toHaveProperty('obfuscatedCode');
-        expect(result.obfuscatedCode).toContain('VAR_1');
+        expect(result.obfuscatedCode).toContain('Var_1');
         expect(result.obfuscatedCode).toContain('STR_1');
+    });
+
+    // Test 7: High Security pf.gov package obfuscation
+    test('should obfuscate package and imports in high-security mode (pf.gov)', () => {
+        const secureCode = `package pf.gov.si.secret;
+import static pf.gov.si.util.Constants.SECRET_VAL;
+public class SecretClass {
+    public void process() {
+        System.out.println(SECRET_VAL);
+    }
+}`;
+        const result = obfuscate(secureCode);
+
+        // pf, gov, si and secret should all be obfuscated
+        expect(result.obfuscatedCode).toContain('package Var_1.Var_2.Var_3.Var_4;');
+        // Entire path should be obfuscated where not safe
+        expect(result.obfuscatedCode).toContain('import static Var_1.Var_2.Var_3.util.Class_1.Class_2;');
+        // Class and method
+        expect(result.obfuscatedCode).toContain('public class Class_3');
+        expect(result.obfuscatedCode).toContain('Var_5'); // process method
     });
 });
 
