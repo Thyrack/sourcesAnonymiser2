@@ -89,12 +89,24 @@ function isClassName(name) {
 }
 
 /**
- * Offusque le code Java donné
- * @param {string} code Le code source Java original
- * @param {Object} currentMapping Le mapping actuellement dans le localStorage
- * @returns {Object} { obfuscatedCode, newMapping } ou throw une erreur
+ * Splits the input code into multiple units based on FILE separators or package declarations.
  */
-export function obfuscate(code, currentMapping = {}) {
+function splitCode(code) {
+    const fileSeparator = /\/\/\s*---\s*FILE:\s*.*?\s*---\s*/;
+    if (fileSeparator.test(code)) {
+        return code.split(/(?=\/\/\s*---\s*FILE:\s*.*?\s*---\s*)/).filter(s => s.trim().length > 0);
+    }
+
+    // Split by package, keeping the package keyword in the next part if it's not the first one.
+    // We split at positions where a package declaration is preceded by a newline.
+    const parts = code.split(/(?=\n\s*package\s+[\w.]+\s*;)/);
+    return parts.filter(s => s.trim().length > 0);
+}
+
+/**
+ * Offuscate a single unit of Java code.
+ */
+function obfuscateUnit(code, currentMapping, counters) {
   let ast;
   try {
     ast = parse(code);
@@ -103,15 +115,11 @@ export function obfuscate(code, currentMapping = {}) {
   }
 
   let isHighSecurity = false;
-
-  // Ensembles pour identifier les déclarations
   const declaredVars = new Set();
   const declaredClasses = new Set();
   const declaredMethods = new Set();
+  const tokensToSkip = new Set();
 
-  const tokensToSkip = new Set(); // Set of "startOffset|image"
-
-  // 1. Déterminer isHighSecurity et identifier les tokens à ignorer (imports/packages/annotations externes)
   traverse(ast, (node) => {
     if (node.name === 'packageDeclaration') {
       const ids = [];
@@ -140,7 +148,6 @@ export function obfuscate(code, currentMapping = {}) {
 
     if (node.name === 'annotation') {
       const actualIds = [];
-      // Use a custom traverse to avoid double counting or getting the same tokens
       const findIds = (n) => {
         if (Array.isArray(n)) {
           n.forEach(findIds);
@@ -166,7 +173,6 @@ export function obfuscate(code, currentMapping = {}) {
     }
   });
 
-  // 2. Extraire les déclarations
   traverse(ast, node => {
     if (node.name === 'variableDeclaratorId') {
       if (node.children && node.children.Identifier && node.children.Identifier[0]) {
@@ -200,9 +206,11 @@ export function obfuscate(code, currentMapping = {}) {
     }
   });
 
-  const nodesToReplace = []; // { type: string, startOffset: number, endOffset: number, value: string }
+  const nodesToReplace = [];
 
-  // 3. Extraire tous les usages et chaînes de caractères
+  // Identify nodes that are comments to preserve file separators if they are comments
+  const fileSeparatorRegex = /^\/\/\s*---\s*FILE:\s*.*?\s*---\s*$/;
+
   traverse(ast, (node, path) => {
     if (node.tokenType && node.tokenType.name === 'StringLiteral') {
         const val = node.image.substring(1, node.image.length - 1);
@@ -241,47 +249,27 @@ export function obfuscate(code, currentMapping = {}) {
     }
   });
 
-  // 4. Extraire les commentaires
   const comments = getComments(code);
   for (const c of comments) {
+      const commentText = code.substring(c.startOffset, c.endOffset + 1).trim();
+      if (fileSeparatorRegex.test(commentText)) {
+          // Keep file separators
+          continue;
+      }
       nodesToReplace.push({ type: 'COMMENT', startOffset: c.startOffset, endOffset: c.endOffset, value: '' });
   }
 
-  // 5. Générer le mapping et préparer les remplacements
-  const newMapping = {};
+  const newMappingForUnit = {};
   const localValueToId = Object.create(null);
-
-  const counters = { Var: 0, Class: 0, STR: 0 };
-  const currentMappingKeys = Object.keys(currentMapping);
-
-  // Initialize counters from current mapping
-  for (const key of currentMappingKeys) {
-      const underIndex = key.indexOf('_');
-      if (underIndex > 0) {
-          const prefix = key.substring(0, underIndex);
-          if (counters[prefix] !== undefined) {
-              const countStr = key.substring(underIndex + 1);
-              if (/^\d+$/.test(countStr)) {
-                  const count = parseInt(countStr, 10);
-                  if (count > counters[prefix]) {
-                      counters[prefix] = count;
-                  }
-              }
-          }
-      }
-  }
-
   const finalReplacements = [];
 
-  // Performance optimization: Pre-compute reverse mapping for O(1) lookups
   const reverseMapping = new Map();
-  for (const key of currentMappingKeys) {
+  for (const key in currentMapping) {
       if (!reverseMapping.has(currentMapping[key])) {
           reverseMapping.set(currentMapping[key], key);
       }
   }
 
-  // Assigner les IDs et préparer les remplacements
   for (const n of nodesToReplace) {
       if (n.type === 'COMMENT') {
           finalReplacements.push({ startOffset: n.startOffset, endOffset: n.endOffset, newText: '' });
@@ -306,16 +294,17 @@ export function obfuscate(code, currentMapping = {}) {
           counters[prefix]++;
           id = `${prefix}_${counters[prefix]}`;
           localValueToId[n.value] = id;
-          newMapping[id] = n.value;
+          newMappingForUnit[id] = n.value;
+          // Important: also add to currentMapping and reverseMapping so it can be reused in the same unit or next units
+          currentMapping[id] = n.value;
+          reverseMapping.set(n.value, id);
       }
 
       finalReplacements.push({ startOffset: n.startOffset, endOffset: n.endOffset, newText: id });
   }
 
-  // Trier par index décroissant pour ne pas fausser les offsets
   finalReplacements.sort((a, b) => b.startOffset - a.startOffset);
 
-  // Résolution de conflits d'offsets (si un noeud englobe un autre)
   const resolvedReplacements = [];
   let lastStart = Infinity;
   for (const rep of finalReplacements) {
@@ -325,7 +314,6 @@ export function obfuscate(code, currentMapping = {}) {
       }
   }
 
-  // Appliquer les remplacements
   const chunks = [];
   let lastIndex = 0;
   for (let i = resolvedReplacements.length - 1; i >= 0; i--) {
@@ -336,9 +324,49 @@ export function obfuscate(code, currentMapping = {}) {
   }
   chunks.push(code.substring(lastIndex));
 
-  const obfuscatedCode = chunks.join('');
+  return { obfuscatedCode: chunks.join(''), newMapping: newMappingForUnit };
+}
 
-  return { obfuscatedCode, newMapping };
+/**
+ * Offusque le code Java donné (supporte plusieurs classes/fichiers)
+ * @param {string} code Le code source Java original
+ * @param {Object} currentMapping Le mapping actuellement dans le localStorage
+ * @returns {Object} { obfuscatedCode, newMapping } ou throw une erreur
+ */
+export function obfuscate(code, currentMapping = {}) {
+  const units = splitCode(code);
+  const totalNewMapping = {};
+  const cumulativeMapping = { ...currentMapping };
+  const counters = { Var: 0, Class: 0, STR: 0 };
+
+  const currentMappingKeys = Object.keys(cumulativeMapping);
+  for (const key of currentMappingKeys) {
+      const underIndex = key.indexOf('_');
+      if (underIndex > 0) {
+          const prefix = key.substring(0, underIndex);
+          if (counters[prefix] !== undefined) {
+              const countStr = key.substring(underIndex + 1);
+              if (/^\d+$/.test(countStr)) {
+                  const count = parseInt(countStr, 10);
+                  if (count > counters[prefix]) {
+                      counters[prefix] = count;
+                  }
+              }
+          }
+      }
+  }
+
+  const obfuscatedUnits = units.map(unit => {
+      const { obfuscatedCode, newMapping } = obfuscateUnit(unit, cumulativeMapping, counters);
+      Object.assign(totalNewMapping, newMapping);
+      // cumulativeMapping is already updated inside obfuscateUnit (passed by reference)
+      return obfuscatedCode;
+  });
+
+  return {
+      obfuscatedCode: obfuscatedUnits.join(''),
+      newMapping: totalNewMapping
+  };
 }
 
 /**

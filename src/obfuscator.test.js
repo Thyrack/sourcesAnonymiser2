@@ -205,4 +205,49 @@ public class Annotated {
         expect(result.obfuscatedCode).not.toContain('@pf.gov.si.MyAnnotation');
         expect(result.obfuscatedCode).toContain('@Var_');
     });
+
+    test('should obfuscate multiple units and share identifiers', () => {
+        const multiUnitCode = `
+package a;
+class A {
+    String name = "shared";
+}
+
+package b;
+class B {
+    String title = "shared";
+}
+`;
+        // This should fail with original parse but work with our split logic (if split by newline + package)
+        const result = obfuscate(multiUnitCode);
+        // console.log("OBFUSCATED CODE:\n", result.obfuscatedCode);
+        expect(result.obfuscatedCode).toContain('class Class_');
+
+        // Find the STR_ for "shared"
+        const mapping = result.newMapping;
+        const sharedId = Object.keys(mapping).find(key => mapping[key] === '"shared"');
+        expect(sharedId).toBeDefined();
+
+        // Count occurrences of sharedId in obfuscated code - should be 2
+        const occurrences = result.obfuscatedCode.split(sharedId).length - 1;
+        expect(occurrences).toBe(2);
+    });
+
+    test('should obfuscate multiple units with explicit separators', () => {
+        const multiUnitCode = `// --- FILE: A.java ---
+package a;
+class A {
+    void callB(B b) {}
+}
+// --- FILE: B.java ---
+package b;
+class B {}
+`;
+        const result = obfuscate(multiUnitCode);
+        // console.log("OBFUSCATED CODE:\n", result.obfuscatedCode);
+        // They are being obfuscated because they are recognized as classes (starting with uppercase)
+        expect(result.obfuscatedCode).toContain('class Class_');
+        expect(result.obfuscatedCode).toContain('// --- FILE: A.java ---');
+        expect(result.obfuscatedCode).toContain('// --- FILE: B.java ---');
+    });
 });
