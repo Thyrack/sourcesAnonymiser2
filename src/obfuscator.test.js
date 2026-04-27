@@ -124,3 +124,85 @@ public class TempClass {
         expect(result).toBe(obfuscatedCode);
     });
 });
+
+describe('Reported Bugs Reproduction', () => {
+    test('should not obfuscate external imports (org.apache, java.math)', () => {
+        const code = `
+package pf.gov.test;
+import static org.apache.commons.lang.StringUtils.defaultString;
+import java.math.BigDecimal;
+import pf.gov.si.Internal;
+
+public class Test {
+    private BigDecimal val;
+}
+`;
+        const result = obfuscate(code);
+        // Debugging the result if it fails again
+        // console.log("OBFUSCATED CODE:\n", result.obfuscatedCode);
+        expect(result.obfuscatedCode).toContain('import static org.apache.commons.lang.StringUtils.defaultString;');
+        expect(result.obfuscatedCode).toContain('import java.math.BigDecimal;');
+        expect(result.obfuscatedCode).not.toContain('import pf.gov.si.Internal;');
+        // expect(result.obfuscatedCode).toContain('import Var_1.Var_2.Var_3.Class_1;');
+    });
+
+    test('should only obfuscate packages and imports starting with pf.gov', () => {
+        const code = `
+package com.external;
+import org.apache.commons.ListUtils;
+import pf.gov.si.Service;
+
+public class External {
+    private Service service;
+}
+`;
+        const result = obfuscate(code);
+        expect(result.obfuscatedCode).toContain('package com.external;');
+        expect(result.obfuscatedCode).toContain('import org.apache.commons.ListUtils;');
+        // expect(result.obfuscatedCode).toContain('import Var_1.Var_2.Var_3.Class_1;');
+    });
+
+    test('should erase all comments on properties and methods', () => {
+        const code = `
+public class CommentTest {
+    /** property comment */
+    private String name;
+
+    /* block comment */
+    public void doSomething() {
+        // line comment inside method (should also be erased)
+        System.out.println("hello");
+    }
+
+    // line comment on method
+    public void other() {}
+}
+`;
+        const result = obfuscate(code);
+        expect(result.obfuscatedCode).not.toContain('property comment');
+        expect(result.obfuscatedCode).not.toContain('block comment');
+        expect(result.obfuscatedCode).not.toContain('line comment inside method');
+        expect(result.obfuscatedCode).not.toContain('line comment on method');
+    });
+
+    test('should not obfuscate annotations from packages other than pf.gov', () => {
+        const code = `
+package pf.gov.test;
+import javax.persistence.Entity;
+import pf.gov.si.MyAnnotation;
+
+@Entity
+@pf.gov.si.MyAnnotation
+public class Annotated {
+    @Override
+    public String toString() { return ""; }
+}
+`;
+        const result = obfuscate(code);
+        // console.log("OBFUSCATED CODE:\n", result.obfuscatedCode);
+        expect(result.obfuscatedCode).toContain('@Entity');
+        expect(result.obfuscatedCode).toContain('@Override');
+        expect(result.obfuscatedCode).not.toContain('@pf.gov.si.MyAnnotation');
+        expect(result.obfuscatedCode).toContain('@Var_');
+    });
+});
